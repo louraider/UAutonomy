@@ -5,6 +5,8 @@ import 'package:material_ui/material_ui.dart';
 import 'package:uautonomy/src/rust/api/maps.dart';
 import 'package:vector_map_tiles/vector_map_tiles.dart';
 import 'package:vector_tile_renderer/vector_tile_renderer.dart' as vtr;
+// ignore: implementation_imports
+import 'package:vector_tile_renderer/src/themes/light_theme.dart' as vtr_light;
 
 /// Офлайн-карти: векторні PMTiles (схема OpenMapTiles) за областями.
 /// Тайли читає ядро на Rust, малює vector_map_tiles. Інтернет-тайлів
@@ -27,7 +29,7 @@ class _MapsScreenState extends State<MapsScreen> {
   List<RegionView> _regions = const [];
   RegionView? _region;
   Future<MapHeader>? _header;
-  final _theme = vtr.ProvidedThemes.lightTheme();
+  final _theme = mapTheme();
 
   @override
   void initState() {
@@ -83,7 +85,8 @@ class _MapsScreenState extends State<MapsScreen> {
   );
 
   Widget _map(RegionView r, MapHeader h) {
-    final b = h.bounds;
+    // Карти, зібрані tilemaker, не мають меж у заголовку: беремо межі області.
+    final b = h.bounds.length == 4 ? h.bounds : r.bbox;
     final bounds = LatLngBounds(LatLng(b[1], b[0]), LatLng(b[3], b[2]));
     return FlutterMap(
       key: ValueKey(r.id),
@@ -190,4 +193,18 @@ class _PmTilesProvider extends VectorTileProvider {
     }
     return data;
   }
+}
+
+/// Світла тема OpenMapTiles, але з підписами з `name:latin`: tilemaker
+/// кладе туди назву у вихідному письмі (кирилицею), а `name`/`name_en`
+/// не заповнює. Без цього карта була б зовсім без назв.
+vtr.Theme mapTheme() {
+  Object? fix(Object? v) => switch (v) {
+    '{name}' || '{name_en}' => '{name:latin}',
+    Map<String, dynamic> m => {for (final e in m.entries) e.key: fix(e.value)},
+    List<dynamic> l => [for (final x in l) fix(x)],
+    _ => v,
+  };
+  final data = fix(vtr_light.lightThemeData()) as Map<String, dynamic>;
+  return vtr.ThemeReader().read(data);
 }

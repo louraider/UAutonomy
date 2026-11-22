@@ -107,6 +107,7 @@ void main() {
       expect(kyiv.mapPath, isNotNull);
       final h = await mapHeader(path: kyiv.mapPath!);
       expect(h.vector, isTrue);
+      expect(h.bounds.length == 4 || kyiv.bbox.length == 4, isTrue);
       final tile = await mapTile(path: kyiv.mapPath!, z: 10, x: 598, y: 345);
       expect(tile, isNotNull, reason: 'тайл центру Києва');
 

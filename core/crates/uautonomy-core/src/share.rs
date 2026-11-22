@@ -6,19 +6,22 @@
 //! Сервер лише читає: нічого не приймає й не змінює. Без TLS, бо працює
 //! без інтернету в локальній мережі.
 
+use std::collections::HashMap;
 use std::fs;
 use std::io::{Read, Seek, SeekFrom};
 use std::net::IpAddr;
 use std::path::PathBuf;
-use std::sync::{Arc, RwLock};
+use std::sync::{Arc, Mutex, OnceLock, RwLock};
 use std::thread::JoinHandle;
 
 use serde::Serialize;
 use tiny_http::{Header, Method, Request, Response, Server, StatusCode};
 
-use crate::pack::{is_safe_id, is_safe_rel_path, Catalog};
+use crate::pack::{is_safe_id, is_safe_rel_path, Catalog, PackKind};
+use crate::pmtiles::PmTiles;
 use crate::search::Library;
 use crate::store::PackStore;
+use crate::webmap::{self, MapInfo};
 
 pub const DEFAULT_PORT: u16 = 8642;
 
@@ -191,6 +194,56 @@ fn handle(state: &Arc<RwLock<ShareState>>, req: Request) {
             ),
             None => not_found(req),
         },
+        ["map"] => {
+            let maps: Vec<MapInfo> = installed_maps(&st).into_iter().map(|(m, _)| m).collect();
+            text(
+                req,
+                200,
+                "text/html; charset=utf-8",
+                webmap::map_page(&maps),
+            )
+        }
+        ["map", "lib", name] => match webmap::asset(name) {
+            Some((mime, data)) => respond(
+                req,
+                Response::from_data(data)
+                    .with_header(header("Content-Type", mime))
+                    .with_header(header("Cache-Control", "max-age=604800")),
+            ),
+            None => not_found(req),
+        },
+        ["map", "fonts", rest] => {
+            let range = rest.rsplit('/').next().unwrap_or("");
+            let range = range.strip_suffix(".pbf").unwrap_or(range);
+            respond(
+                req,
+                Response::from_data(webmap::glyphs(range))
+                    .with_header(header("Content-Type", "application/x-protobuf"))
+                    .with_header(header("Cache-Control", "max-age=604800")),
+            )
+        }
+        ["map", "style", file] => {
+            let region = file.strip_suffix(".json").unwrap_or(file);
+            let origin = req
+                .headers()
+                .iter()
+                .find(|h| h.field.equiv("Host"))
+                .map(|h| format!("http://{}", h.value.as_str()))
+                .unwrap_or_default();
+            match installed_maps(&st)
+                .into_iter()
+                .find(|(m, _)| m.region == region)
+            {
+                Some((m, _)) => text(
+                    req,
+                    200,
+                    "application/json; charset=utf-8",
+                    webmap::style_json(&origin, &m),
+                ),
+                None => not_found(req),
+            }
+        }
+        ["map", "tiles", rest] => serve_tile(&st, req, rest),
         ["zim", pack, rest] => serve_zim(&st, req, pack, rest),
         ["zim", pack] => serve_zim(&st, req, pack, ""),
         ["packs", "catalog.json"] => json(
@@ -224,6 +277,104 @@ fn handle(state: &Arc<RwLock<ShareState>>, req: Request) {
             }
         }
         _ => not_found(req),
+    }
+}
+
+/// Відкриті карти: відкривати PMTiles на кожен тайл задорого.
+fn open_map(path: &std::path::Path) -> Option<Arc<PmTiles>> {
+    static CACHE: OnceLock<Mutex<HashMap<PathBuf, Arc<PmTiles>>>> = OnceLock::new();
+    let mut c = CACHE.get_or_init(Default::default).lock().unwrap();
+    if let Some(m) = c.get(path) {
+        return Some(m.clone());
+    }
+    let m = Arc::new(PmTiles::open(path).ok()?);
+    c.insert(path.to_path_buf(), m.clone());
+    Some(m)
+}
+
+/// Встановлені карти областей: опис і шлях до `.pmtiles`.
+fn installed_maps(st: &ShareState) -> Vec<(MapInfo, PathBuf)> {
+    let mut out = Vec::new();
+    for p in st.store.installed() {
+        if p.kind != PackKind::Map {
+            continue;
+        }
+        let Some(region) = p.region.clone() else {
+            continue;
+        };
+        let Some(path) = p
+            .files
+            .iter()
+            .find(|f| f.path.ends_with(".pmtiles"))
+            .and_then(|f| st.store.file_path(&p.id, &f.path))
+        else {
+            continue;
+        };
+        let Some(pm) = open_map(&path) else {
+            continue;
+        };
+        let h = &pm.header;
+        let known = crate::regions::REGIONS.iter().find(|r| r.id == region);
+        let title = known
+            .map(|r| r.title.to_string())
+            .unwrap_or_else(|| p.title.clone());
+        // tilemaker не записує межі в заголовок PMTiles (нулі): беремо
+        // межі області, інакше MapLibre не запитує жодного тайла.
+        let bounds = match known {
+            Some(r) if !h.has_bounds() => r.bbox,
+            _ => h.bounds,
+        };
+        out.push((
+            MapInfo {
+                region,
+                title,
+                min_zoom: h.min_zoom,
+                max_zoom: h.max_zoom,
+                bounds,
+            },
+            path,
+        ));
+    }
+    out.sort_by(|a, b| a.0.title.cmp(&b.0.title));
+    out
+}
+
+/// `/map/tiles/<область>/<z>/<x>/<y>.pbf` → векторний тайл (MVT).
+fn serve_tile(st: &ShareState, req: Request, rest: &str) {
+    let parts: Vec<&str> = rest.split('/').collect();
+    let [region, z, x, y] = parts.as_slice() else {
+        return not_found(req);
+    };
+    let y = y.strip_suffix(".pbf").unwrap_or(y);
+    let (Ok(z), Ok(x), Ok(y)) = (z.parse::<u8>(), x.parse::<u32>(), y.parse::<u32>()) else {
+        return not_found(req);
+    };
+    // Швидкий шлях: пакет `map-<область>`; інакше — перебір усіх карт.
+    let direct = st.store.get(&format!("map-{region}")).and_then(|p| {
+        let f = p.files.iter().find(|f| f.path.ends_with(".pmtiles"))?;
+        st.store.file_path(&p.id, &f.path)
+    });
+    let Some(path) = direct.or_else(|| {
+        installed_maps(st)
+            .into_iter()
+            .find(|(m, _)| m.region == *region)
+            .map(|(_, p)| p)
+    }) else {
+        return not_found(req);
+    };
+    let Some(pm) = open_map(&path) else {
+        return not_found(req);
+    };
+    match pm.tile(z, x, y) {
+        Ok(Some(data)) => respond(
+            req,
+            Response::from_data(data)
+                .with_header(header("Content-Type", "application/x-protobuf"))
+                .with_header(header("Cache-Control", "max-age=86400")),
+        ),
+        // Тайла немає (за межами області): порожня відповідь, не помилка.
+        Ok(None) => respond(req, Response::empty(204)),
+        Err(_) => not_found(req),
     }
 }
 
@@ -462,10 +613,15 @@ return `<div class=hit><a href='${href}'>${e(h.title)}</a><br><small>${e(h.snipp
         "<!doctype html><html lang=uk><head><meta charset=utf-8><meta name=viewport content='width=device-width,initial-scale=1'>\
 <title>Автономія</title><style>{CSS}</style></head><body><h1>Автономія</h1><p>Офлайн-бібліотека з пристрою «{name}». Працює без інтернету.</p>\
 <p class=warn>У небезпеці телефонуйте 112. Неперевірені фахівцем матеріали позначені.</p>\
-<input id=q placeholder='Пошук: кровотеча, вода, укриття…' autofocus><div id=r></div>\
+<input id=q placeholder='Пошук: кровотеча, вода, укриття…' autofocus><div id=r></div>{maps_h}\
 <h2>Термінові картки</h2>{cards}{zim_h}{apps_h}<h2>Пакети на цьому пристрої</h2><ul>{packs}</ul>\
 <p class=src>У застосунку «Автономія»: Пакети → Отримати з іншого пристрою, і вставте цю адресу.</p>{script}</body></html>",
         name = esc(&st.device_name),
+        maps_h = if st.store.installed().iter().any(|p| p.kind == PackKind::Map) {
+            "<p><a href='/map'><b>🗺 Офлайн-карти</b></a></p>"
+        } else {
+            ""
+        },
         zim_h = if zims.is_empty() { String::new() } else { format!("<h2>Довідники</h2><ul>{zims}</ul>") },
         apps_h = if apps.is_empty() { String::new() } else { format!("<h2>Встановити застосунок</h2><ul>{apps}</ul>") },
     )
@@ -529,6 +685,70 @@ mod tests {
         assert_eq!(c, 404);
         let (c, _) = get(&format!("{base}/packs/pocket/manifest.json"), None);
         assert_eq!(c, 200);
+        s.stop();
+    }
+
+    #[test]
+    fn serves_map_for_browsers() {
+        let t = tempfile::tempdir().unwrap();
+        let store = PackStore::open(t.path().join("store")).unwrap();
+        let src = t.path().join("map-kyiv");
+        fs::create_dir_all(&src).unwrap();
+        let tile = b"\x1a\x00mvt".to_vec();
+        fs::write(
+            src.join("kyiv.pmtiles"),
+            crate::pmtiles::write_test_pmtiles(&[((10, 598, 345), tile.clone())], true),
+        )
+        .unwrap();
+        let m = crate::store::manifest_for_dir(
+            &src,
+            crate::PackManifest {
+                id: "map-kyiv".into(),
+                tier: crate::PackTier::Family,
+                kind: PackKind::Map,
+                title: "Карта: Київ".into(),
+                description: String::new(),
+                version: "1".into(),
+                files: vec![],
+                content_license: "ODbL-1.0".into(),
+                region: Some("kyiv".into()),
+                model_id: None,
+            },
+        )
+        .unwrap();
+        fs::write(src.join("manifest.json"), m.to_json()).unwrap();
+        store.install_from_dir(&src, &mut |_, _| {}).unwrap();
+        let state = Arc::new(RwLock::new(ShareState::new(store, Library::new(vec![]))));
+        let s = ShareServer::start(state, 0).unwrap();
+        let base = format!("http://127.0.0.1:{}", s.port());
+
+        let (_, body) = get(&format!("{base}/"), None);
+        assert!(String::from_utf8(body).unwrap().contains("/map"));
+        let (c, body) = get(&format!("{base}/map"), None);
+        assert_eq!(c, 200);
+        assert!(String::from_utf8(body).unwrap().contains("value='kyiv'"));
+        let (c, body) = get(&format!("{base}/map/style/kyiv.json"), None);
+        assert_eq!(c, 200);
+        let style: serde_json::Value = serde_json::from_slice(&body).unwrap();
+        assert!(style["sources"]["omt"]["tiles"][0]
+            .as_str()
+            .unwrap()
+            .starts_with("http://127.0.0.1:"));
+        let (c, body) = get(&format!("{base}/map/tiles/kyiv/10/598/345.pbf"), None);
+        assert_eq!((c, body), (200, tile));
+        let (c, _) = get(&format!("{base}/map/tiles/kyiv/10/1/1.pbf"), None);
+        assert_eq!(c, 204);
+        let (c, _) = get(&format!("{base}/map/tiles/lvivska/10/1/1.pbf"), None);
+        assert_eq!(c, 404);
+        let (c, body) = get(
+            &format!("{base}/map/fonts/Noto%20Sans%20Regular/1024-1279.pbf"),
+            None,
+        );
+        assert_eq!(c, 200);
+        assert!(body.len() > 10_000);
+        let (c, body) = get(&format!("{base}/map/lib/maplibre-gl.js"), None);
+        assert_eq!(c, 200);
+        assert!(body.len() > 500_000);
         s.stop();
     }
 

@@ -63,6 +63,15 @@ cargo run -p uautonomy-hub -- serve   --data /srv/autonomy --app avtonomiia.apk
 4. `tilemaker` → `.pmtiles` z0–z14. Моря немає (шари з shapefile вимкнено), лише дані OSM.
 5. `uautonomy-hub pack --kind map --region <id>`.
 
+### Карти в браузері (iPhone, ноутбук)
+
+Сервер Wi-Fi-обміну віддає `/map`: сторінку з MapLibre GL JS, стилем
+OpenMapTiles (`webmap.rs`), тайлами `/map/tiles/<область>/{z}/{x}/{y}.pbf`
+і гліфами Noto Sans (латиниця й кирилиця). Усе вбудовано в ядро, тож і
+роздавач, і той, хто дивиться, обходяться без інтернету. tilemaker не
+записує межі в заголовок PMTiles і кладе назви в `name:latin`, тому межі
+беремо з області, а підписи з `name:latin`.
+
 ## Енциклопедії Kiwix (ZIM)
 
 Списки енциклопедій лежать у `tools/packs/kiwix.json`. Workflow «Пакети»

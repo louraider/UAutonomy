@@ -30,7 +30,8 @@ class MapHeader {
   final int minZoom;
   final int maxZoom;
 
-  /// [захід, південь, схід, північ]
+  /// [захід, південь, схід, північ]; порожньо, якщо файл їх не містить
+  /// (tilemaker) — тоді беріть межі області.
   final Float64List bounds;
   final double centerLat;
   final double centerLon;
