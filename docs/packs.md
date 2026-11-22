@@ -56,7 +56,9 @@ cargo run -p uautonomy-hub -- serve   --data /srv/autonomy --app avtonomiia.apk
 (workflow «Пакети»):
 
 1. OSM України з Geofabrik.
-2. **Прибрати критичну інфраструктуру** (`tools/maps/exclude-tags.txt`: енергетика, військові об'єкти, трубопроводи, зв'язок, аеродроми, греблі, небезпечне виробництво, органи влади). Список попередній, його мають перевірити фахівці.
+2. Карти повні, як у відкритому OSM: дані й так публічні, тому нічого не
+   прибираємо. Фільтр `tools/maps/exclude-tags.txt` лишився необов'язковим
+   (`FILTER_INFRA=1`, у workflow — галочка `filter_infra`).
 3. Вирізати область за `bbox` з `regions.rs` (`osmium extract`).
 4. `tilemaker` → `.pmtiles` z0–z14. Моря немає (шари з shapefile вимкнено), лише дані OSM.
 5. `uautonomy-hub pack --kind map --region <id>`.
