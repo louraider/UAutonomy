@@ -1,73 +1,97 @@
 import 'package:material_ui/material_ui.dart';
-import 'package:uautonomy/src/rust/api/simple.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:uautonomy/screens/chat_screen.dart';
+import 'package:uautonomy/screens/library_screen.dart';
+import 'package:uautonomy/screens/maps_screen.dart';
+import 'package:uautonomy/screens/packs_screen.dart';
+import 'package:uautonomy/screens/share_screen.dart';
+import 'package:uautonomy/src/rust/api/library.dart';
 import 'package:uautonomy/src/rust/frb_generated.dart';
 
 Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
   await RustLib.init();
-  runApp(const UAutonomyApp());
+  final dir = await getApplicationSupportDirectory();
+  String? error;
+  try {
+    await openLibrary(dataDir: dir.path);
+  } catch (e) {
+    error = '$e';
+  }
+  runApp(UAutonomyApp(startupError: error));
 }
 
 class UAutonomyApp extends StatelessWidget {
-  const UAutonomyApp({super.key});
+  const UAutonomyApp({super.key, this.startupError});
+
+  final String? startupError;
 
   @override
   Widget build(BuildContext context) {
+    const seed = Color(0xFF0057B7);
     return MaterialApp(
       title: 'Автономія',
-      theme: ThemeData(colorSchemeSeed: const Color(0xFF0057B7)),
-      home: const SearchPage(),
+      theme: ThemeData(colorSchemeSeed: seed),
+      darkTheme: ThemeData(colorSchemeSeed: seed, brightness: Brightness.dark),
+      home: HomeScreen(startupError: startupError),
     );
   }
 }
 
-class SearchPage extends StatefulWidget {
-  const SearchPage({super.key});
+/// Сповіщення, що вміст бібліотеки змінився (встановили чи видалили пакет).
+final libraryVersion = ValueNotifier<int>(0);
+
+class HomeScreen extends StatefulWidget {
+  const HomeScreen({super.key, this.startupError});
+
+  final String? startupError;
 
   @override
-  State<SearchPage> createState() => _SearchPageState();
+  State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _SearchPageState extends State<SearchPage> {
-  List<CardView> _results = const [];
+class _HomeScreenState extends State<HomeScreen> {
+  int _tab = 0;
 
-  void _search(String query) {
-    setState(() => _results = searchCards(query: query));
-  }
+  void _goTo(int tab) => setState(() => _tab = tab);
 
   @override
   Widget build(BuildContext context) {
+    final pages = [
+      LibraryScreen(version: libraryVersion),
+      ChatScreen(version: libraryVersion, onOpenPacks: () => _goTo(3)),
+      MapsScreen(version: libraryVersion, onOpenPacks: () => _goTo(3)),
+      PacksScreen(onChanged: () => libraryVersion.value++),
+      const ShareScreen(),
+    ];
     return Scaffold(
-      appBar: AppBar(title: Text('Автономія · ядро ${coreVersion()}')),
-      body: Column(
-        children: [
-          const MaterialBanner(
-            content: Text(
-              'Ранній каркас. Картки демонстраційні й не є медичними '
-              'рекомендаціями. У небезпеці телефонуйте 112.',
-            ),
-            actions: [SizedBox.shrink()],
-          ),
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: TextField(
-              decoration: const InputDecoration(
-                labelText: 'Пошук (працює без інтернету)',
-                border: OutlineInputBorder(),
+      body: SafeArea(
+        child: Column(
+          children: [
+            if (widget.startupError != null)
+              MaterialBanner(
+                content: Text(
+                  'Не вдалося відкрити бібліотеку: ${widget.startupError}',
+                ),
+                actions: const [SizedBox.shrink()],
               ),
-              onChanged: _search,
+            Expanded(
+              child: IndexedStack(index: _tab, children: pages),
             ),
-          ),
-          Expanded(
-            child: ListView(
-              children: [
-                for (final card in _results)
-                  ListTile(
-                    title: Text(card.title),
-                    subtitle: Text('${card.steps.join('\n')}\n${card.source}'),
-                    isThreeLine: true,
-                  ),
-              ],
-            ),
+          ],
+        ),
+      ),
+      bottomNavigationBar: NavigationBar(
+        selectedIndex: _tab,
+        onDestinationSelected: _goTo,
+        destinations: const [
+          NavigationDestination(icon: Icon(Icons.menu_book), label: 'Довідка'),
+          NavigationDestination(icon: Icon(Icons.forum), label: 'Помічник'),
+          NavigationDestination(icon: Icon(Icons.map), label: 'Карти'),
+          NavigationDestination(icon: Icon(Icons.download), label: 'Пакети'),
+          NavigationDestination(
+            icon: Icon(Icons.wifi_tethering),
+            label: 'Обмін',
           ),
         ],
       ),
