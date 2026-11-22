@@ -1,0 +1,13 @@
+[package]
+name = "uautonomy-core"
+description = "Ядро офлайн-бібліотеки «Автономія»: пакети контенту, пошук, (згодом) ZIM, карти та локальний ШІ."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
