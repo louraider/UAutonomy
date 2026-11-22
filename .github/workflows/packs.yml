@@ -74,7 +74,7 @@ jobs:
         if: env.REGIONS != 'none'
         run: |
           mkdir -p work
-          curl -fL --retry 5 -o work/ukraine.osm.pbf https://download.geofabrik.de/europe/ukraine-latest.osm.pbf
+          curl -fL --retry 8 --retry-delay 15 --retry-all-errors -o work/ukraine.osm.pbf https://download.geofabrik.de/europe/ukraine-latest.osm.pbf
           ls -la work
       - name: Карти областей
         if: env.REGIONS != 'none'
@@ -101,7 +101,7 @@ jobs:
           python3 -c "import json;[print(p['files'][0]['url'], p['files'][0]['sha256']) for p in json.load(open('out/zims.json')) if p['files'][0]['size'] < 700_000_000]" |
           while read -r url sha; do
             f="work/zim/$(basename "$url")"
-            curl -fL --retry 5 -o "$f" "$url"
+            curl -fL --retry 8 --retry-delay 10 --retry-all-errors -o "$f" "$url"
             echo "$sha  $f" | sha256sum -c -
             core/target/release/uautonomy-hub zim-check "$f" вода кровотеча water bleeding wound
             rm -f "$f"
