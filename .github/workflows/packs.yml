@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
     inputs:
       regions:
-        description: "Області через кому (kyiv,lvivska…) або all"
+        description: "Області через кому (kyiv,lvivska…), all або none (без карт)"
         default: "all"
       model_repo:
         description: "Репозиторій GGUF на Hugging Face (порожньо — без моделі)"
@@ -19,6 +19,10 @@ on:
       model_id:
         description: "id моделі з core/.../models.rs"
         default: "gemma-4-e2b-it-q4"
+      zims:
+        description: "Додати енциклопедії Kiwix (tools/packs/kiwix.json)"
+        type: boolean
+        default: true
       filter_infra:
         description: "Прибрати об'єкти зі списку tools/maps/exclude-tags.txt (за замовчуванням карти повні)"
         type: boolean
@@ -46,6 +50,7 @@ env:
   MODEL_FILE: ${{ github.event_name == 'workflow_dispatch' && inputs.model_file || 'gemma-4-E2B-it-Q4_K_M.gguf' }}
   MODEL_ID: ${{ github.event_name == 'workflow_dispatch' && inputs.model_id || 'gemma-4-e2b-it-q4' }}
   PUBLISH: ${{ github.event_name == 'workflow_dispatch' && inputs.publish }}
+  ZIMS: ${{ github.event_name != 'workflow_dispatch' || inputs.zims }}
   FILTER_INFRA: ${{ github.event_name == 'workflow_dispatch' && inputs.filter_infra && '1' || '0' }}
   TAG: packs
 
@@ -62,15 +67,17 @@ jobs:
         with:
           workspaces: core
       - name: Хаб (інструмент пакетів)
-        run: cargo build --release -p uautonomy-hub --manifest-path core/Cargo.toml
+        run: cargo build --release -p uautonomy-hub --manifest-path core/Cargo.toml && mkdir -p out work
       - name: Інструменти
         run: sudo apt-get update && sudo apt-get install -y osmium-tool && docker pull ghcr.io/systemed/tilemaker:master
       - name: OSM України (Geofabrik)
+        if: env.REGIONS != 'none'
         run: |
           mkdir -p work
           curl -fL --retry 5 -o work/ukraine.osm.pbf https://download.geofabrik.de/europe/ukraine-latest.osm.pbf
           ls -la work
       - name: Карти областей
+        if: env.REGIONS != 'none'
         env:
           WORK: ${{ github.workspace }}/work/tmp
         run: |
@@ -81,12 +88,32 @@ jobs:
         run: |
           python3 tools/packs/hf_model_pack.py "$MODEL_REPO" "$MODEL_FILE" "$MODEL_ID" "Gemma 4 E2B (телефон)" > out/model.json
           cat out/model.json
+      - name: Енциклопедії Kiwix (посилання на download.kiwix.org)
+        if: env.ZIMS == 'true'
+        run: |
+          python3 tools/packs/kiwix_pack.py tools/packs/kiwix.json > out/zims.json
+      - name: Перевірка справжніх ZIM нашим читачем
+        if: env.ZIMS == 'true'
+        run: |
+          set -euo pipefail
+          mkdir -p work/zim
+          # Невеликі файли качаємо повністю, звіряємо SHA-256 і відкриваємо.
+          python3 -c "import json;[print(p['files'][0]['url'], p['files'][0]['sha256']) for p in json.load(open('out/zims.json')) if p['files'][0]['size'] < 400_000_000]" |
+          while read -r url sha; do
+            f="work/zim/$(basename "$url")"
+            curl -fL --retry 5 -o "$f" "$url"
+            echo "$sha  $f" | sha256sum -c -
+            core/target/release/uautonomy-hub zim-check "$f" вода кровотеча water bleeding wound
+            rm -f "$f"
+          done
       - name: Каталог
         run: |
           set -euo pipefail
+          mkdir -p out/packs
           BASE="https://github.com/${GITHUB_REPOSITORY}/releases/download/${TAG}"
           merge=()
           [ -f out/model.json ] && merge+=(--merge out/model.json)
+          [ -f out/zims.json ] && merge+=(--merge out/zims.json)
           # Попередній каталог: області, які зараз не перезбирали, лишаються.
           if gh release download "$TAG" -p catalog.json -O out/previous.json 2>/dev/null; then
             merge+=(--merge out/previous.json)
@@ -103,7 +130,7 @@ jobs:
         run: |
           gh release view "$TAG" >/dev/null 2>&1 || gh release create "$TAG" --prerelease \
             --title "Пакети Автономії" \
-            --notes "Офлайн-пакети для застосунку «Автономія»: карти областей (OpenStreetMap, ODbL). Каталог: catalog.json."
+            --notes "Офлайн-пакети для застосунку «Автономія»: карти областей (OpenStreetMap, ODbL), посилання на енциклопедії Kiwix і модель ШІ. Каталог: catalog.json."
           gh release upload "$TAG" out/stage/* --clobber
       - name: Артефакт (перевірка без публікації)
         if: env.PUBLISH != 'true'

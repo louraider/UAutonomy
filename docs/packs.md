@@ -63,6 +63,17 @@ cargo run -p uautonomy-hub -- serve   --data /srv/autonomy --app avtonomiia.apk
 4. `tilemaker` → `.pmtiles` z0–z14. Моря немає (шари з shapefile вимкнено), лише дані OSM.
 5. `uautonomy-hub pack --kind map --region <id>`.
 
+## Енциклопедії Kiwix (ZIM)
+
+Списки енциклопедій лежать у `tools/packs/kiwix.json`. Workflow «Пакети»
+запускає `tools/packs/kiwix_pack.py`, який бере найновіший файл кожної з
+download.kiwix.org, а розмір і SHA-256 читає з `.meta4`. Файли ZIM ми не
+копіюємо: у каталозі для них прямі посилання (Kiwix сам перенаправляє на
+дзеркала, докачка працює). Файли до 400 МБ workflow завантажує повністю,
+звіряє SHA-256 і відкриває нашим читачем (`uautonomy-hub zim-check`).
+Якщо якоїсь назви на Kiwix немає, запис пропускається, а в журналі
+з'являються схожі назви.
+
 ## Моделі
 
 Каталог моделей (`models.rs`) — JSON з вимогами до ОЗП. Застосунок
