@@ -38,6 +38,13 @@ dependencies:
   rust_lib_uautonomy:
     path: rust_builder
   flutter_rust_bridge: 2.13.0
+  llamadart: ^0.20.5
+  flutter_map: ^8.3.2
+  flutter_map_pmtiles: ^1.1.0
+  qr_flutter: ^4.1.0
+  file_picker: ^13.4.1
+  path_provider: ^2.1.6
+  latlong2: ^0.10.1
 
 dev_dependencies:
   flutter_test:

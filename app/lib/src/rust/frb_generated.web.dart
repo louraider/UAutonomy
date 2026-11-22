@@ -6,7 +6,12 @@
 // Static analysis wrongly picks the IO variant, thus ignore this
 // ignore_for_file: argument_type_not_assignable
 
-import 'api/simple.dart';
+import 'api/ai.dart';
+import 'api/device.dart';
+import 'api/library.dart';
+import 'api/maps.dart';
+import 'api/packs.dart';
+import 'api/share.dart';
 
 import 'dart:async';
 import 'dart:convert';
@@ -24,13 +29,45 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   });
 
   @protected
+  AnyhowException dco_decode_AnyhowException(dynamic raw);
+
+  @protected
+  RustStreamSink<ProgressView> dco_decode_StreamSink_progress_view_Sse(
+    dynamic raw,
+  );
+
+  @protected
   String dco_decode_String(dynamic raw);
 
   @protected
   bool dco_decode_bool(dynamic raw);
 
   @protected
+  CardView dco_decode_box_autoadd_card_view(dynamic raw);
+
+  @protected
+  DocView dco_decode_box_autoadd_doc_view(dynamic raw);
+
+  @protected
   CardView dco_decode_card_view(dynamic raw);
+
+  @protected
+  CategoryView dco_decode_category_view(dynamic raw);
+
+  @protected
+  DocView dco_decode_doc_view(dynamic raw);
+
+  @protected
+  double dco_decode_f_64(dynamic raw);
+
+  @protected
+  HardwareView dco_decode_hardware_view(dynamic raw);
+
+  @protected
+  HitView dco_decode_hit_view(dynamic raw);
+
+  @protected
+  LibraryInfo dco_decode_library_info(dynamic raw);
 
   @protected
   List<String> dco_decode_list_String(dynamic raw);
@@ -39,7 +76,76 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   List<CardView> dco_decode_list_card_view(dynamic raw);
 
   @protected
+  List<CategoryView> dco_decode_list_category_view(dynamic raw);
+
+  @protected
+  List<HitView> dco_decode_list_hit_view(dynamic raw);
+
+  @protected
+  List<LocalModel> dco_decode_list_local_model(dynamic raw);
+
+  @protected
+  List<ModelView> dco_decode_list_model_view(dynamic raw);
+
+  @protected
+  List<PackView> dco_decode_list_pack_view(dynamic raw);
+
+  @protected
+  Float64List dco_decode_list_prim_f_64_strict(dynamic raw);
+
+  @protected
   Uint8List dco_decode_list_prim_u_8_strict(dynamic raw);
+
+  @protected
+  List<RegionView> dco_decode_list_region_view(dynamic raw);
+
+  @protected
+  List<SourceView> dco_decode_list_source_view(dynamic raw);
+
+  @protected
+  LocalModel dco_decode_local_model(dynamic raw);
+
+  @protected
+  ModelView dco_decode_model_view(dynamic raw);
+
+  @protected
+  String? dco_decode_opt_String(dynamic raw);
+
+  @protected
+  CardView? dco_decode_opt_box_autoadd_card_view(dynamic raw);
+
+  @protected
+  DocView? dco_decode_opt_box_autoadd_doc_view(dynamic raw);
+
+  @protected
+  PackView dco_decode_pack_view(dynamic raw);
+
+  @protected
+  ProgressView dco_decode_progress_view(dynamic raw);
+
+  @protected
+  RagView dco_decode_rag_view(dynamic raw);
+
+  @protected
+  RecommendationView dco_decode_recommendation_view(dynamic raw);
+
+  @protected
+  RegionView dco_decode_region_view(dynamic raw);
+
+  @protected
+  ShareInfo dco_decode_share_info(dynamic raw);
+
+  @protected
+  SourceView dco_decode_source_view(dynamic raw);
+
+  @protected
+  int dco_decode_u_16(dynamic raw);
+
+  @protected
+  int dco_decode_u_32(dynamic raw);
+
+  @protected
+  BigInt dco_decode_u_64(dynamic raw);
 
   @protected
   int dco_decode_u_8(dynamic raw);
@@ -48,13 +154,45 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   void dco_decode_unit(dynamic raw);
 
   @protected
+  AnyhowException sse_decode_AnyhowException(SseDeserializer deserializer);
+
+  @protected
+  RustStreamSink<ProgressView> sse_decode_StreamSink_progress_view_Sse(
+    SseDeserializer deserializer,
+  );
+
+  @protected
   String sse_decode_String(SseDeserializer deserializer);
 
   @protected
   bool sse_decode_bool(SseDeserializer deserializer);
 
   @protected
+  CardView sse_decode_box_autoadd_card_view(SseDeserializer deserializer);
+
+  @protected
+  DocView sse_decode_box_autoadd_doc_view(SseDeserializer deserializer);
+
+  @protected
   CardView sse_decode_card_view(SseDeserializer deserializer);
+
+  @protected
+  CategoryView sse_decode_category_view(SseDeserializer deserializer);
+
+  @protected
+  DocView sse_decode_doc_view(SseDeserializer deserializer);
+
+  @protected
+  double sse_decode_f_64(SseDeserializer deserializer);
+
+  @protected
+  HardwareView sse_decode_hardware_view(SseDeserializer deserializer);
+
+  @protected
+  HitView sse_decode_hit_view(SseDeserializer deserializer);
+
+  @protected
+  LibraryInfo sse_decode_library_info(SseDeserializer deserializer);
 
   @protected
   List<String> sse_decode_list_String(SseDeserializer deserializer);
@@ -63,7 +201,80 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   List<CardView> sse_decode_list_card_view(SseDeserializer deserializer);
 
   @protected
+  List<CategoryView> sse_decode_list_category_view(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  List<HitView> sse_decode_list_hit_view(SseDeserializer deserializer);
+
+  @protected
+  List<LocalModel> sse_decode_list_local_model(SseDeserializer deserializer);
+
+  @protected
+  List<ModelView> sse_decode_list_model_view(SseDeserializer deserializer);
+
+  @protected
+  List<PackView> sse_decode_list_pack_view(SseDeserializer deserializer);
+
+  @protected
+  Float64List sse_decode_list_prim_f_64_strict(SseDeserializer deserializer);
+
+  @protected
   Uint8List sse_decode_list_prim_u_8_strict(SseDeserializer deserializer);
+
+  @protected
+  List<RegionView> sse_decode_list_region_view(SseDeserializer deserializer);
+
+  @protected
+  List<SourceView> sse_decode_list_source_view(SseDeserializer deserializer);
+
+  @protected
+  LocalModel sse_decode_local_model(SseDeserializer deserializer);
+
+  @protected
+  ModelView sse_decode_model_view(SseDeserializer deserializer);
+
+  @protected
+  String? sse_decode_opt_String(SseDeserializer deserializer);
+
+  @protected
+  CardView? sse_decode_opt_box_autoadd_card_view(SseDeserializer deserializer);
+
+  @protected
+  DocView? sse_decode_opt_box_autoadd_doc_view(SseDeserializer deserializer);
+
+  @protected
+  PackView sse_decode_pack_view(SseDeserializer deserializer);
+
+  @protected
+  ProgressView sse_decode_progress_view(SseDeserializer deserializer);
+
+  @protected
+  RagView sse_decode_rag_view(SseDeserializer deserializer);
+
+  @protected
+  RecommendationView sse_decode_recommendation_view(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  RegionView sse_decode_region_view(SseDeserializer deserializer);
+
+  @protected
+  ShareInfo sse_decode_share_info(SseDeserializer deserializer);
+
+  @protected
+  SourceView sse_decode_source_view(SseDeserializer deserializer);
+
+  @protected
+  int sse_decode_u_16(SseDeserializer deserializer);
+
+  @protected
+  int sse_decode_u_32(SseDeserializer deserializer);
+
+  @protected
+  BigInt sse_decode_u_64(SseDeserializer deserializer);
 
   @protected
   int sse_decode_u_8(SseDeserializer deserializer);
@@ -75,13 +286,52 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   int sse_decode_i_32(SseDeserializer deserializer);
 
   @protected
+  void sse_encode_AnyhowException(
+    AnyhowException self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_StreamSink_progress_view_Sse(
+    RustStreamSink<ProgressView> self,
+    SseSerializer serializer,
+  );
+
+  @protected
   void sse_encode_String(String self, SseSerializer serializer);
 
   @protected
   void sse_encode_bool(bool self, SseSerializer serializer);
 
   @protected
+  void sse_encode_box_autoadd_card_view(
+    CardView self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_box_autoadd_doc_view(DocView self, SseSerializer serializer);
+
+  @protected
   void sse_encode_card_view(CardView self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_category_view(CategoryView self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_doc_view(DocView self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_f_64(double self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_hardware_view(HardwareView self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_hit_view(HitView self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_library_info(LibraryInfo self, SseSerializer serializer);
 
   @protected
   void sse_encode_list_String(List<String> self, SseSerializer serializer);
@@ -90,10 +340,106 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   void sse_encode_list_card_view(List<CardView> self, SseSerializer serializer);
 
   @protected
+  void sse_encode_list_category_view(
+    List<CategoryView> self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_list_hit_view(List<HitView> self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_list_local_model(
+    List<LocalModel> self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_list_model_view(
+    List<ModelView> self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_list_pack_view(List<PackView> self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_list_prim_f_64_strict(
+    Float64List self,
+    SseSerializer serializer,
+  );
+
+  @protected
   void sse_encode_list_prim_u_8_strict(
     Uint8List self,
     SseSerializer serializer,
   );
+
+  @protected
+  void sse_encode_list_region_view(
+    List<RegionView> self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_list_source_view(
+    List<SourceView> self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_local_model(LocalModel self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_model_view(ModelView self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_opt_String(String? self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_opt_box_autoadd_card_view(
+    CardView? self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_opt_box_autoadd_doc_view(
+    DocView? self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_pack_view(PackView self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_progress_view(ProgressView self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_rag_view(RagView self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_recommendation_view(
+    RecommendationView self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_region_view(RegionView self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_share_info(ShareInfo self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_source_view(SourceView self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_u_16(int self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_u_32(int self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_u_64(BigInt self, SseSerializer serializer);
 
   @protected
   void sse_encode_u_8(int self, SseSerializer serializer);
