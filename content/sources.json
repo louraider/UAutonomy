@@ -1,0 +1,162 @@
+[
+  {
+    "id": "moz-441",
+    "title": "Наказ МОЗ України від 09.03.2022 № 441 «Про затвердження порядків надання домедичної допомоги особам при невідкладних станах»",
+    "publisher": "Міністерство охорони здоров'я України",
+    "kind": "normative_act",
+    "document_date": "2022-03-09",
+    "registration": "Зареєстровано в Мін'юсті 28.03.2022 за № 356/37692",
+    "urls": [
+      "https://moz.gov.ua/uk/decrees/nakaz-moz-ukraini-vid-09032022--441-pro-zatverdzhennja-porjadkiv-nadannja-domedichnoi-dopomogi-osobam-pri-nevidkladnih-stanah",
+      "https://tccc.org.ua/files/downloads/decrees-441.pdf"
+    ],
+    "accessed": "2026-11-22",
+    "legal_status": "not_protected_official_document",
+    "license": "Не охороняється авторським правом: п. «акти органів державної влади... офіційні документи... адміністративного характеру... а також їх проекти та офіційні переклади», ст. 8 Закону України № 2811-IX",
+    "notes": "29 порядків (додатки). Скасовує наказ МОЗ № 398 від 16.06.2014. На сайті МОЗ змін до наказу не зазначено (перевірити на zakon.rada.gov.ua перед релізом)."
+  },
+  {
+    "id": "moz-water",
+    "title": "Способи знезараження води; МОЗ нагадує про методи знезараження води в побутових умовах",
+    "publisher": "Міністерство охорони здоров'я України",
+    "kind": "public_guidance",
+    "document_date": "2022-06-09",
+    "urls": [
+      "https://moz.gov.ua/uk/sposobi-znezarazhennja-vodi",
+      "https://moz.gov.ua/uk/moz-nagadue-pro-metodi-znezarazhennja-vodi-v-pobutovih-umovah"
+    ],
+    "accessed": "2026-11-22",
+    "legal_status": "facts_restated",
+    "license": "Пам'ятка органу влади, не нормативний акт. Ми не копіюємо текст, а викладаємо факти й методи власними словами (ідеї, методи і факти не охороняються). Для дослівного використання потрібна згода МОЗ.",
+    "notes": "Дата першої сторінки не вказана; друга датована 09.06.2022."
+  },
+  {
+    "id": "moz-co",
+    "title": "МОЗ та ДСНС про отруєння чадним газом",
+    "publisher": "Міністерство охорони здоров'я України, ДСНС",
+    "kind": "public_guidance",
+    "document_date": null,
+    "urls": [
+      "https://moz.gov.ua/article/health/chadnij-gaz",
+      "https://moz.gov.ua/article/news/ponad-100-vipadkiv-otruen-chadnim-gazom-z-grudnja-moz-ta-dsns-nagadujut-jak-ne-dopustiti-otruennja-ta-jak-dopomogti-postrazhdalim-"
+    ],
+    "accessed": "2026-11-22",
+    "legal_status": "facts_restated",
+    "license": "Викладено власними словами; дослівне використання потребує згоди.",
+    "notes": "Див. також порядок 18 наказу № 441 (отруєння невідомою речовиною, вдихання газів)."
+  },
+  {
+    "id": "dsns-generator",
+    "title": "ДСНС: правила безпеки при використанні генератора (через Укрінформ)",
+    "publisher": "ДСНС України (передрук Укрінформ)",
+    "kind": "public_guidance",
+    "document_date": "2022-11-09",
+    "urls": [
+      "https://www.ukrinform.ua/rubric-society/3610858-ukraincam-nagadali-pravila-bezpeki-pri-vikoristanni-generatora.html"
+    ],
+    "accessed": "2026-11-22",
+    "legal_status": "facts_restated",
+    "license": "Факти викладено власними словами. Текст Укрінформу не копіюємо.",
+    "notes": "Джерело 2022 року. Знайти актуальну пам'ятку ДСНС на dsns.gov.ua."
+  },
+  {
+    "id": "civil-war-actions",
+    "title": "Дії населення в умовах надзвичайних ситуацій воєнного характеру",
+    "publisher": "Розміщено на mon.gov.ua; за інформацією порталу Сумської міської ради",
+    "kind": "public_guidance",
+    "document_date": "2022-10-14",
+    "urls": [
+      "https://mon.gov.ua/storage/app/media/rizne/2022/10/14/Diyi.naselennya.v.umovakh.nadzvychaynykh.sytuatsiy.voyennoho.kharakteru-14.10.2022.pdf"
+    ],
+    "accessed": "2026-11-22",
+    "legal_status": "facts_restated",
+    "license": "Ліцензія не зазначена. Викладено власними словами.",
+    "notes": "Вторинне джерело. Перед релізом замінити посиланням на першоджерело ДСНС."
+  },
+  {
+    "id": "shelter-signals",
+    "title": "Що робити, коли чутно сигнал «Слідувати в укриття»",
+    "publisher": "bdpu.org.ua (навчальний заклад), на основі матеріалів ДСНС",
+    "kind": "public_guidance",
+    "document_date": "2025-04",
+    "urls": [
+      "https://www.bdpu.org.ua/wp-content/uploads/2025/04/shho-robyty-koly-chutno-sygnal-sliduvaty-v-ukryttya-bdpu.pdf"
+    ],
+    "accessed": "2026-11-22",
+    "legal_status": "facts_restated",
+    "license": "Ліцензія не зазначена. Викладено власними словами.",
+    "notes": "Вторинне джерело; знайти відповідну пам'ятку ДСНС."
+  },
+  {
+    "id": "odrda-explosives",
+    "title": "Вибухонебезпечні предмети: різновиди та алгоритм дій при їх виявленні",
+    "publisher": "Одеська обласна державна (військова) адміністрація (odrda.od.gov.ua)",
+    "kind": "public_guidance",
+    "document_date": "2025-06",
+    "urls": [
+      "https://odrda.od.gov.ua/wp-content/uploads/2025/06/vybuhonebezpechni-predmety-riznovydy-ta-algorytm-dij-pry-yih-vyyavlenni.pdf"
+    ],
+    "accessed": "2026-11-22",
+    "legal_status": "facts_restated",
+    "license": "Ліцензія не зазначена. Викладено власними словами.",
+    "notes": "Мінна безпека: лише після рецензії сапера."
+  },
+  {
+    "id": "dsns-mines-2023",
+    "title": "Мінна безпека: у ДСНС нагадали основні правила безпеки",
+    "publisher": "АрміяInform (Міноборони) з посиланням на ДСНС",
+    "kind": "news",
+    "document_date": "2023-09-18",
+    "urls": [
+      "https://armyinform.com.ua/2023/09/18/minna-bezpeka-v-ukrayini-u-dsns-nagadaly-osnovni-pravyla-bezpeky/"
+    ],
+    "accessed": "2026-11-22",
+    "legal_status": "facts_restated",
+    "license": "Сайт вказує CC BY 4.0, але посилання веде на CC BY-NC-ND 4.0. Через суперечність текст не копіюємо, лише факти.",
+    "notes": ""
+  },
+  {
+    "id": "unicef-mines",
+    "title": "Навчаємося мінної безпеки всією родиною (статті ЮНІСЕФ Україна)",
+    "publisher": "ЮНІСЕФ Україна",
+    "kind": "public_guidance",
+    "document_date": "2025-06-18",
+    "urls": [
+      "https://www.unicef.org/ukraine/mine-safety-for-the-family",
+      "https://www.unicef.org/ukraine/stories/protect-yourself-from-mines-and-ammunition",
+      "https://www.unicef.org/ukraine/stories/mine-safety-rules-for-children"
+    ],
+    "accessed": "2026-11-22",
+    "legal_status": "facts_restated",
+    "license": "© UNICEF. Умови unicef.org/legal не перевірено. Лише факти власними словами; для ілюстрацій чи тексту потрібна згода.",
+    "notes": "Хороший кандидат на партнерство (матеріали для дітей)."
+  },
+  {
+    "id": "ifrc-2025",
+    "title": "IFRC International First Aid, Resuscitation and Education Guidelines 2025",
+    "publisher": "International Federation of Red Cross and Red Crescent Societies",
+    "kind": "guideline",
+    "document_date": "2025",
+    "urls": [
+      "https://www.ifrc.org/document/international-first-aid-resuscitation-and-education-guidelines"
+    ],
+    "accessed": "2026-11-22",
+    "legal_status": "permission_required",
+    "license": "© IFRC. Видання 2016 року дозволяло некомерційне копіювання із зазначенням джерела; умови видання 2025 року не знайдено. Не використовуємо текст до письмового дозволу IFRC / ТЧХУ.",
+    "notes": "Повний текст 2025 з хмари отримати не вдалося. Використовувати лише як довідку для рецензента-медика."
+  },
+  {
+    "id": "dsns-chem",
+    "title": "Хімічна загроза: правила поведінки при надзвичайних ситуаціях (листівка ДСНС, розміщена ОБСЄ)",
+    "publisher": "ДСНС України (за текстом листівки), файл на osce.org",
+    "kind": "public_guidance",
+    "document_date": null,
+    "urls": [
+      "https://www.osce.org/files/f/documents/3/2/515976.pdf"
+    ],
+    "accessed": "2026-11-22",
+    "legal_status": "facts_restated",
+    "license": "Ліцензія не зазначена. Викладено власними словами.",
+    "notes": "Частина порад першої допомоги з листівки суперечить наказу № 441 (напр. «не робити штучного дихання», «тонізуючі засоби»); їх не переносимо без рішення медика."
+  }
+]
