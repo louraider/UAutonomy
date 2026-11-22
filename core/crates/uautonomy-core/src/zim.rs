@@ -191,20 +191,6 @@ impl Zim {
     /// `X/listing/titleOrdered/v1`. Беремо його, а шапку лише як запасний шлях.
     fn title_index(&self) -> &TitleIndex {
         self.titles.get_or_init(|| {
-            if let Some(e) = self.get_by_path('X', "listing/titleOrdered/v1") {
-                if let Ok((_, b)) = self.content(&e) {
-                    let v: Vec<u32> = b
-                        .as_chunks::<4>()
-                        .0
-                        .iter()
-                        .map(|c| u32::from_le_bytes(*c))
-                        .filter(|i| *i < self.header.entry_count)
-                        .collect();
-                    if !v.is_empty() {
-                        return TitleIndex::Listing(v);
-                    }
-                }
-            }
             let n = self.header.entry_count;
             let len = self
                 .file
@@ -214,7 +200,25 @@ impl Zim {
                 .map(|m| m.len())
                 .unwrap_or(0);
             let end = self.header.title_ptr_pos.checked_add(n as u64 * 4);
-            if self.header.title_ptr_pos >= 80 && end.is_some_and(|e| e <= len) {
+            let header_ok = self.header.title_ptr_pos >= 80 && end.is_some_and(|e| e <= len);
+            let listing: Vec<u32> = self
+                .get_by_path('X', "listing/titleOrdered/v1")
+                .and_then(|e| self.content(&e).ok())
+                .map(|(_, b)| {
+                    b.as_chunks::<4>()
+                        .0
+                        .iter()
+                        .map(|c| u32::from_le_bytes(*c))
+                        .filter(|i| *i < n)
+                        .collect()
+                })
+                .unwrap_or_default();
+            // Деякі архіви (zimgit) позначають статтею лише головну сторінку:
+            // тоді повний список із шапки корисніший.
+            let tiny = (listing.len() as u64) * 20 < n as u64;
+            if !listing.is_empty() && !(tiny && header_ok) {
+                TitleIndex::Listing(listing)
+            } else if header_ok {
                 TitleIndex::Header(n)
             } else {
                 TitleIndex::None

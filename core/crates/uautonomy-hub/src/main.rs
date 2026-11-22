@@ -254,7 +254,11 @@ fn zim_check(args: &[String]) -> R {
     let main = zim.main_page().ok_or("немає головної сторінки")?;
     let main = zim.resolve(&main)?;
     let (mime, data) = zim.content(&main)?;
-    println!("порядок заголовків: {}", zim.title_index_info());
+    println!(
+        "порядок заголовків: {}; HTML-статей: {}",
+        zim.title_index_info(),
+        zim.articles().count()
+    );
     println!("головна: {} ({mime}, {} Б)", main.path(), data.len());
     if data.is_empty() {
         return Err("порожня головна сторінка".into());
