@@ -131,11 +131,12 @@ void main() {
         )
         .first;
     // Адреса під QR-кодом (SelectableText); ListView будує лише видиме.
+    // Finder.first кидає на порожньому, тож шукаємо рівно першу адресу.
     final address = find.byWidgetPredicate(
-      (w) => w is SelectableText && (w.data ?? '').startsWith('http://'),
+      (w) => w is SelectableText && w.data == info.urls.first,
     );
-    await tester.scrollUntilVisible(address.first, 200, scrollable: shareList);
-    expect(address, findsWidgets);
+    await tester.scrollUntilVisible(address, 200, scrollable: shareList);
+    expect(address, findsOneWidget);
     await tester.scrollUntilVisible(
       find.text('Вимкнути обмін'),
       -200,
