@@ -194,8 +194,10 @@ impl Zim {
             if let Some(e) = self.get_by_path('X', "listing/titleOrdered/v1") {
                 if let Ok((_, b)) = self.content(&e) {
                     let v: Vec<u32> = b
-                        .chunks_exact(4)
-                        .map(|c| u32::from_le_bytes(c.try_into().unwrap()))
+                        .as_chunks::<4>()
+                        .0
+                        .iter()
+                        .map(|c| u32::from_le_bytes(*c))
                         .filter(|i| *i < self.header.entry_count)
                         .collect();
                     if !v.is_empty() {
