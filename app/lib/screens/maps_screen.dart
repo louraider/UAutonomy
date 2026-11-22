@@ -1,12 +1,14 @@
-import 'package:flutter_map/flutter_map.dart';
-import 'package:flutter_map_pmtiles/flutter_map_pmtiles.dart';
-import 'package:latlong2/latlong.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter_map/flutter_map.dart';
+import 'package:latlong2/latlong.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:uautonomy/src/rust/api/maps.dart';
+import 'package:vector_map_tiles/vector_map_tiles.dart';
+import 'package:vector_tile_renderer/vector_tile_renderer.dart' as vtr;
 
-/// Офлайн-карти: растрові PMTiles за областями. Інтернет-тайли не
-/// використовуємо зовсім, щоб карта працювала однаково без зв'язку.
+/// Офлайн-карти: векторні PMTiles (схема OpenMapTiles) за областями.
+/// Тайли читає ядро на Rust, малює vector_map_tiles. Інтернет-тайлів
+/// немає зовсім, тож карта працює однаково без зв'язку.
 class MapsScreen extends StatefulWidget {
   const MapsScreen({
     super.key,
@@ -24,8 +26,8 @@ class MapsScreen extends StatefulWidget {
 class _MapsScreenState extends State<MapsScreen> {
   List<RegionView> _regions = const [];
   RegionView? _region;
-  Future<PmTilesTileProvider>? _provider;
-  final _map = MapController();
+  Future<MapHeader>? _header;
+  final _theme = vtr.ProvidedThemes.lightTheme();
 
   @override
   void initState() {
@@ -54,9 +56,57 @@ class _MapsScreenState extends State<MapsScreen> {
 
   void _select(RegionView r) {
     _region = r;
-    _provider = r.mapPath == null
-        ? null
-        : PmTilesTileProvider.fromSource(r.mapPath!);
+    _header = r.mapPath == null ? null : mapHeader(path: r.mapPath!);
+  }
+
+  Widget _missing(RegionView? r) => Center(
+    child: Padding(
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(Icons.map_outlined, size: 48),
+          const SizedBox(height: 12),
+          Text(
+            'Карта області «${r?.title ?? ''}» ще не завантажена. '
+            'Після завантаження пакета карта працює без інтернету.',
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 16),
+          FilledButton(
+            onPressed: widget.onOpenPacks,
+            child: const Text('До пакетів'),
+          ),
+        ],
+      ),
+    ),
+  );
+
+  Widget _map(RegionView r, MapHeader h) {
+    final b = h.bounds;
+    final bounds = LatLngBounds(LatLng(b[1], b[0]), LatLng(b[3], b[2]));
+    return FlutterMap(
+      key: ValueKey(r.id),
+      options: MapOptions(
+        initialCenter: bounds.center,
+        initialZoom: 9,
+        minZoom: 5,
+        maxZoom: 18,
+        cameraConstraint: CameraConstraint.contain(bounds: bounds),
+      ),
+      children: [
+        VectorTileLayer(
+          theme: _theme,
+          tileProviders: TileProviders({
+            'openmaptiles': _PmTilesProvider(r.mapPath!, h.minZoom, h.maxZoom),
+          }),
+          maximumZoom: 18,
+        ),
+        const RichAttributionWidget(
+          attributions: [TextSourceAttribution('© учасники OpenStreetMap')],
+        ),
+      ],
+    );
   }
 
   @override
@@ -83,69 +133,61 @@ class _MapsScreenState extends State<MapsScreen> {
           ),
         ),
         Expanded(
-          child: r == null || _provider == null
-              ? Center(
-                  child: Padding(
-                    padding: const EdgeInsets.all(24),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(Icons.map_outlined, size: 48),
-                        const SizedBox(height: 12),
-                        Text(
-                          'Карта області «${r?.title ?? ''}» ще не завантажена. '
-                          'Карти працюють без інтернету після завантаження пакета.',
-                          textAlign: TextAlign.center,
-                        ),
-                        const SizedBox(height: 16),
-                        FilledButton(
-                          onPressed: widget.onOpenPacks,
-                          child: const Text('До пакетів'),
-                        ),
-                      ],
-                    ),
-                  ),
-                )
-              : FutureBuilder<PmTilesTileProvider>(
+          child: r == null || _header == null
+              ? _missing(r)
+              : FutureBuilder<MapHeader>(
                   key: ValueKey(r.id),
-                  future: _provider,
+                  future: _header,
                   builder: (context, snap) {
                     if (snap.hasError) {
                       return Center(
                         child: Text('Не вдалося відкрити карту: ${snap.error}'),
                       );
                     }
-                    if (!snap.hasData) {
+                    final h = snap.data;
+                    if (h == null) {
                       return const Center(child: CircularProgressIndicator());
                     }
-                    final b = r.bbox;
-                    return FlutterMap(
-                      mapController: _map,
-                      options: MapOptions(
-                        initialCenter: LatLng(r.centerLat, r.centerLon),
-                        initialZoom: 9,
-                        minZoom: 5,
-                        maxZoom: 16,
-                        cameraConstraint: CameraConstraint.contain(
-                          bounds: LatLngBounds(
-                            LatLng(b[1], b[0]),
-                            LatLng(b[3], b[2]),
-                          ),
+                    if (!h.vector) {
+                      return const Center(
+                        child: Text(
+                          'Цей файл карти не векторний (потрібен MVT).',
                         ),
-                      ),
-                      children: [
-                        TileLayer(tileProvider: snap.data!, maxNativeZoom: 14),
-                        const RichAttributionWidget(
-                          attributions: [
-                            TextSourceAttribution('© учасники OpenStreetMap'),
-                          ],
-                        ),
-                      ],
-                    );
+                      );
+                    }
+                    return _map(r, h);
                   },
                 ),
         ),
       ],
     );
+  }
+}
+
+class _PmTilesProvider extends VectorTileProvider {
+  _PmTilesProvider(this.path, this.minimumZoom, this.maximumZoom);
+
+  final String path;
+
+  @override
+  final int minimumZoom;
+
+  @override
+  final int maximumZoom;
+
+  @override
+  TileOffset get tileOffset => TileOffset.DEFAULT;
+
+  @override
+  Future<Uint8List> provide(TileIdentity tile) async {
+    final data = await mapTile(path: path, z: tile.z, x: tile.x, y: tile.y);
+    if (data == null) {
+      throw ProviderException(
+        message: 'немає тайла ${tile.z}/${tile.x}/${tile.y}',
+        statusCode: 404,
+        retryable: Retryable.none,
+      );
+    }
+    return data;
   }
 }

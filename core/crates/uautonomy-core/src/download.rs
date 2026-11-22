@@ -195,6 +195,40 @@ mod tests {
             cards
         );
 
+        // Як у GitHub Releases: файл за прямою адресою з перенаправленням
+        // (302) на інший сервер, докачка має пережити перенаправлення.
+        let redirect = tiny_http::Server::http("127.0.0.1:0").unwrap();
+        let rport = redirect.server_addr().to_ip().unwrap().port();
+        let target = base.clone();
+        let rthread = std::thread::spawn(move || {
+            for req in redirect.incoming_requests().take(1) {
+                let loc = format!("{target}/packs/pocket/cards.json");
+                let h = tiny_http::Header::from_bytes(&b"Location"[..], loc.as_bytes()).unwrap();
+                let _ = req.respond(tiny_http::Response::empty(302).with_header(h));
+            }
+        });
+        let mut cat2 = cat.clone();
+        let mut pack2 = pack.clone();
+        pack2.files.retain(|f| f.path == "cards.json");
+        pack2.files[0].url = Some(format!(
+            "http://127.0.0.1:{rport}/release/pocket--cards.json"
+        ));
+        cat2.packs = vec![pack2.clone()];
+        let c = PackStore::open(t.path().join("c")).unwrap();
+        let dl = c.download_dir("pocket");
+        fs::create_dir_all(&dl).unwrap();
+        fs::write(dl.join("cards.json.part"), &cards[..10]).unwrap();
+        download_pack(&c, &cat2, &pack2, &cancel, &mut |_| {}).unwrap();
+        assert_eq!(
+            fs::read(c.file_path("pocket", "cards.json").unwrap()).unwrap(),
+            cards
+        );
+        assert!(
+            c.get("pocket").unwrap().files[0].url.is_none(),
+            "адреса не зберігається у встановленому маніфесті"
+        );
+        rthread.join().unwrap();
+
         cancel.store(true, Ordering::Relaxed);
         b.remove("pocket").unwrap();
         assert!(matches!(

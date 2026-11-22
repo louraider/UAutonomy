@@ -39,7 +39,7 @@ flutter_rust_bridge::frb_generated_boilerplate!(
     default_rust_auto_opaque = RustAutoOpaqueMoi,
 );
 pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_VERSION: &str = "2.13.0";
-pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_CONTENT_HASH: i32 = -274118472;
+pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_CONTENT_HASH: i32 = -331757148;
 
 // Section: executor
 
@@ -573,6 +573,41 @@ fn wire__crate__api__device__local_models_impl(
         },
     )
 }
+fn wire__crate__api__maps__map_header_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::SseCodec, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "map_header",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            let api_path = <String>::sse_decode(&mut deserializer);
+            deserializer.end();
+            move |context| {
+                transform_result_sse::<_, flutter_rust_bridge::for_generated::anyhow::Error>(
+                    (move || {
+                        let output_ok = crate::api::maps::map_header(api_path)?;
+                        std::result::Result::Ok(output_ok)
+                    })(),
+                )
+            }
+        },
+    )
+}
 fn wire__crate__api__maps__map_regions_impl(
     ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
     rust_vec_len_: i32,
@@ -599,6 +634,44 @@ fn wire__crate__api__maps__map_regions_impl(
                 let output_ok = Ok::<_, ()>(crate::api::maps::map_regions())?;
                 std::result::Result::Ok(output_ok)
             })())
+        },
+    )
+}
+fn wire__crate__api__maps__map_tile_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::SseCodec, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "map_tile",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            let api_path = <String>::sse_decode(&mut deserializer);
+            let api_z = <u8>::sse_decode(&mut deserializer);
+            let api_x = <u32>::sse_decode(&mut deserializer);
+            let api_y = <u32>::sse_decode(&mut deserializer);
+            deserializer.end();
+            move |context| {
+                transform_result_sse::<_, flutter_rust_bridge::for_generated::anyhow::Error>(
+                    (move || {
+                        let output_ok = crate::api::maps::map_tile(api_path, api_z, api_x, api_y)?;
+                        std::result::Result::Ok(output_ok)
+                    })(),
+                )
+            }
         },
     )
 }
@@ -662,6 +735,38 @@ fn wire__crate__api__library__open_library_impl(
                         std::result::Result::Ok(output_ok)
                     })(),
                 )
+            }
+        },
+    )
+}
+fn wire__crate__api__device__ram_status_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::SseCodec, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "ram_status",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            deserializer.end();
+            move |context| {
+                transform_result_sse::<_, ()>((move || {
+                    let output_ok = Ok::<_, ()>(crate::api::device::ram_status())?;
+                    std::result::Result::Ok(output_ok)
+                })())
             }
         },
     )
@@ -1246,6 +1351,26 @@ impl SseDecode for crate::api::device::LocalModel {
     }
 }
 
+impl SseDecode for crate::api::maps::MapHeader {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut var_minZoom = <u8>::sse_decode(deserializer);
+        let mut var_maxZoom = <u8>::sse_decode(deserializer);
+        let mut var_bounds = <Vec<f64>>::sse_decode(deserializer);
+        let mut var_centerLat = <f64>::sse_decode(deserializer);
+        let mut var_centerLon = <f64>::sse_decode(deserializer);
+        let mut var_vector = <bool>::sse_decode(deserializer);
+        return crate::api::maps::MapHeader {
+            min_zoom: var_minZoom,
+            max_zoom: var_maxZoom,
+            bounds: var_bounds,
+            center_lat: var_centerLat,
+            center_lon: var_centerLon,
+            vector: var_vector,
+        };
+    }
+}
+
 impl SseDecode for crate::api::device::ModelView {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
@@ -1307,6 +1432,17 @@ impl SseDecode for Option<crate::api::library::DocView> {
     }
 }
 
+impl SseDecode for Option<Vec<u8>> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        if (<bool>::sse_decode(deserializer)) {
+            return Some(<Vec<u8>>::sse_decode(deserializer));
+        } else {
+            return None;
+        }
+    }
+}
+
 impl SseDecode for crate::api::packs::PackView {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
@@ -1357,6 +1493,18 @@ impl SseDecode for crate::api::ai::RagView {
             system: var_system,
             user: var_user,
             sources: var_sources,
+        };
+    }
+}
+
+impl SseDecode for crate::api::device::RamStatus {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut var_totalMb = <u64>::sse_decode(deserializer);
+        let mut var_availableMb = <u64>::sse_decode(deserializer);
+        return crate::api::device::RamStatus {
+            total_mb: var_totalMb,
+            available_mb: var_availableMb,
         };
     }
 }
@@ -1491,12 +1639,15 @@ fn pde_ffi_dispatcher_primary_impl(
         11 => wire__crate__api__device__import_model_file_impl(port, ptr, rust_vec_len, data_len),
         12 => wire__crate__api__packs__import_pack_impl(port, ptr, rust_vec_len, data_len),
         13 => wire__crate__api__library__init_app_impl(port, ptr, rust_vec_len, data_len),
-        19 => wire__crate__api__library__open_library_impl(port, ptr, rust_vec_len, data_len),
-        20 => wire__crate__api__device__recommendation_impl(port, ptr, rust_vec_len, data_len),
-        22 => wire__crate__api__device__remove_model_file_impl(port, ptr, rust_vec_len, data_len),
-        23 => wire__crate__api__packs__remove_pack_impl(port, ptr, rust_vec_len, data_len),
-        26 => wire__crate__api__share__start_sharing_impl(port, ptr, rust_vec_len, data_len),
-        27 => wire__crate__api__share__stop_sharing_impl(port, ptr, rust_vec_len, data_len),
+        17 => wire__crate__api__maps__map_header_impl(port, ptr, rust_vec_len, data_len),
+        19 => wire__crate__api__maps__map_tile_impl(port, ptr, rust_vec_len, data_len),
+        21 => wire__crate__api__library__open_library_impl(port, ptr, rust_vec_len, data_len),
+        22 => wire__crate__api__device__ram_status_impl(port, ptr, rust_vec_len, data_len),
+        23 => wire__crate__api__device__recommendation_impl(port, ptr, rust_vec_len, data_len),
+        25 => wire__crate__api__device__remove_model_file_impl(port, ptr, rust_vec_len, data_len),
+        26 => wire__crate__api__packs__remove_pack_impl(port, ptr, rust_vec_len, data_len),
+        29 => wire__crate__api__share__start_sharing_impl(port, ptr, rust_vec_len, data_len),
+        30 => wire__crate__api__share__stop_sharing_impl(port, ptr, rust_vec_len, data_len),
         _ => unreachable!(),
     }
 }
@@ -1516,11 +1667,11 @@ fn pde_ffi_dispatcher_sync_impl(
         14 => wire__crate__api__packs__installed_packs_impl(ptr, rust_vec_len, data_len),
         15 => wire__crate__api__library__library_info_impl(ptr, rust_vec_len, data_len),
         16 => wire__crate__api__device__local_models_impl(ptr, rust_vec_len, data_len),
-        17 => wire__crate__api__maps__map_regions_impl(ptr, rust_vec_len, data_len),
-        18 => wire__crate__api__device__model_catalog_impl(ptr, rust_vec_len, data_len),
-        21 => wire__crate__api__maps__region_at_impl(ptr, rust_vec_len, data_len),
-        24 => wire__crate__api__library__search_impl(ptr, rust_vec_len, data_len),
-        25 => wire__crate__api__share__sharing_status_impl(ptr, rust_vec_len, data_len),
+        18 => wire__crate__api__maps__map_regions_impl(ptr, rust_vec_len, data_len),
+        20 => wire__crate__api__device__model_catalog_impl(ptr, rust_vec_len, data_len),
+        24 => wire__crate__api__maps__region_at_impl(ptr, rust_vec_len, data_len),
+        27 => wire__crate__api__library__search_impl(ptr, rust_vec_len, data_len),
+        28 => wire__crate__api__share__sharing_status_impl(ptr, rust_vec_len, data_len),
         _ => unreachable!(),
     }
 }
@@ -1694,6 +1845,28 @@ impl flutter_rust_bridge::IntoIntoDart<crate::api::device::LocalModel>
     }
 }
 // Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for crate::api::maps::MapHeader {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        [
+            self.min_zoom.into_into_dart().into_dart(),
+            self.max_zoom.into_into_dart().into_dart(),
+            self.bounds.into_into_dart().into_dart(),
+            self.center_lat.into_into_dart().into_dart(),
+            self.center_lon.into_into_dart().into_dart(),
+            self.vector.into_into_dart().into_dart(),
+        ]
+        .into_dart()
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive for crate::api::maps::MapHeader {}
+impl flutter_rust_bridge::IntoIntoDart<crate::api::maps::MapHeader>
+    for crate::api::maps::MapHeader
+{
+    fn into_into_dart(self) -> crate::api::maps::MapHeader {
+        self
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
 impl flutter_rust_bridge::IntoDart for crate::api::device::ModelView {
     fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
         [
@@ -1780,6 +1953,24 @@ impl flutter_rust_bridge::IntoDart for crate::api::ai::RagView {
 impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive for crate::api::ai::RagView {}
 impl flutter_rust_bridge::IntoIntoDart<crate::api::ai::RagView> for crate::api::ai::RagView {
     fn into_into_dart(self) -> crate::api::ai::RagView {
+        self
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for crate::api::device::RamStatus {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        [
+            self.total_mb.into_into_dart().into_dart(),
+            self.available_mb.into_into_dart().into_dart(),
+        ]
+        .into_dart()
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive for crate::api::device::RamStatus {}
+impl flutter_rust_bridge::IntoIntoDart<crate::api::device::RamStatus>
+    for crate::api::device::RamStatus
+{
+    fn into_into_dart(self) -> crate::api::device::RamStatus {
         self
     }
 }
@@ -2100,6 +2291,18 @@ impl SseEncode for crate::api::device::LocalModel {
     }
 }
 
+impl SseEncode for crate::api::maps::MapHeader {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <u8>::sse_encode(self.min_zoom, serializer);
+        <u8>::sse_encode(self.max_zoom, serializer);
+        <Vec<f64>>::sse_encode(self.bounds, serializer);
+        <f64>::sse_encode(self.center_lat, serializer);
+        <f64>::sse_encode(self.center_lon, serializer);
+        <bool>::sse_encode(self.vector, serializer);
+    }
+}
+
 impl SseEncode for crate::api::device::ModelView {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
@@ -2146,6 +2349,16 @@ impl SseEncode for Option<crate::api::library::DocView> {
     }
 }
 
+impl SseEncode for Option<Vec<u8>> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <bool>::sse_encode(self.is_some(), serializer);
+        if let Some(value) = self {
+            <Vec<u8>>::sse_encode(value, serializer);
+        }
+    }
+}
+
 impl SseEncode for crate::api::packs::PackView {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
@@ -2176,6 +2389,14 @@ impl SseEncode for crate::api::ai::RagView {
         <String>::sse_encode(self.system, serializer);
         <String>::sse_encode(self.user, serializer);
         <Vec<crate::api::ai::SourceView>>::sse_encode(self.sources, serializer);
+    }
+}
+
+impl SseEncode for crate::api::device::RamStatus {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <u64>::sse_encode(self.total_mb, serializer);
+        <u64>::sse_encode(self.available_mb, serializer);
     }
 }
 

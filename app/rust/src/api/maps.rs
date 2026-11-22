@@ -51,3 +51,44 @@ pub fn map_regions() -> Vec<RegionView> {
 pub fn region_at(lat: f64, lon: f64) -> Option<String> {
     regions::at(lat, lon).map(|r| r.id.to_string())
 }
+
+pub struct MapHeader {
+    pub min_zoom: u8,
+    pub max_zoom: u8,
+    /// [захід, південь, схід, північ]
+    pub bounds: Vec<f64>,
+    pub center_lat: f64,
+    pub center_lon: f64,
+    pub vector: bool,
+}
+
+fn open_map(path: &str) -> anyhow::Result<std::sync::Arc<uautonomy_core::pmtiles::PmTiles>> {
+    use std::collections::HashMap;
+    use std::sync::{Arc, Mutex, OnceLock};
+    static OPEN: OnceLock<Mutex<HashMap<String, Arc<uautonomy_core::pmtiles::PmTiles>>>> =
+        OnceLock::new();
+    let mut m = OPEN.get_or_init(Default::default).lock().unwrap();
+    if let Some(p) = m.get(path) {
+        return Ok(p.clone());
+    }
+    let p = Arc::new(uautonomy_core::pmtiles::PmTiles::open(path)?);
+    m.insert(path.to_string(), p.clone());
+    Ok(p)
+}
+
+pub fn map_header(path: String) -> anyhow::Result<MapHeader> {
+    let h = open_map(&path)?.header.clone();
+    Ok(MapHeader {
+        min_zoom: h.min_zoom,
+        max_zoom: h.max_zoom,
+        bounds: h.bounds.to_vec(),
+        center_lat: h.center.0,
+        center_lon: h.center.1,
+        vector: h.tile_type == uautonomy_core::pmtiles::TileType::Mvt,
+    })
+}
+
+/// Тайл z/x/y з файлу карти (розпакований). `None` — тайла немає.
+pub fn map_tile(path: String, z: u8, x: u32, y: u32) -> anyhow::Result<Option<Vec<u8>>> {
+    Ok(open_map(&path)?.tile(z, x, y)?)
+}

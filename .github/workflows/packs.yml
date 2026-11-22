@@ -1,0 +1,109 @@
+name: Пакети (карти, моделі) → GitHub Releases
+
+# Публікація: Actions → «Пакети» → Run workflow. Файли лягають у випуск
+# з тегом `packs`, звідки їх бере застосунок (каталог за замовчуванням).
+# На PR, що змінює інструменти карт, збирається лише Київ без публікації.
+
+on:
+  workflow_dispatch:
+    inputs:
+      regions:
+        description: "Області через кому (kyiv,lvivska…) або all"
+        default: "all"
+      model_repo:
+        description: "Репозиторій GGUF на Hugging Face (порожньо — без моделі)"
+        default: "unsloth/gemma-4-E2B-it-GGUF"
+      model_file:
+        description: "Файл моделі в репозиторії"
+        default: "gemma-4-E2B-it-Q4_K_M.gguf"
+      model_id:
+        description: "id моделі з core/.../models.rs"
+        default: "gemma-4-e2b-it-q4"
+      publish:
+        description: "Опублікувати у випуск packs"
+        type: boolean
+        default: true
+  pull_request:
+    paths:
+      - "tools/maps/**"
+      - "tools/packs/**"
+      - ".github/workflows/packs.yml"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: packs-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  REGIONS: ${{ github.event_name == 'workflow_dispatch' && inputs.regions || 'kyiv' }}
+  MODEL_REPO: ${{ github.event_name == 'workflow_dispatch' && inputs.model_repo || 'unsloth/gemma-4-E2B-it-GGUF' }}
+  MODEL_FILE: ${{ github.event_name == 'workflow_dispatch' && inputs.model_file || 'gemma-4-E2B-it-Q4_K_M.gguf' }}
+  MODEL_ID: ${{ github.event_name == 'workflow_dispatch' && inputs.model_id || 'gemma-4-e2b-it-q4' }}
+  PUBLISH: ${{ github.event_name == 'workflow_dispatch' && inputs.publish }}
+  TAG: packs
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 300
+    steps:
+      - uses: actions/checkout@v4
+      - name: Звільнити місце на диску
+        run: sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL && df -h /
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: core
+      - name: Хаб (інструмент пакетів)
+        run: cargo build --release -p uautonomy-hub --manifest-path core/Cargo.toml
+      - name: Інструменти
+        run: sudo apt-get update && sudo apt-get install -y osmium-tool && docker pull ghcr.io/systemed/tilemaker:master
+      - name: OSM України (Geofabrik)
+        run: |
+          mkdir -p work
+          curl -fL --retry 5 -o work/ukraine.osm.pbf https://download.geofabrik.de/europe/ukraine-latest.osm.pbf
+          ls -la work
+      - name: Карти областей
+        env:
+          WORK: ${{ github.workspace }}/work/tmp
+        run: |
+          core/target/release/uautonomy-hub regions > work/regions.json
+          tools/maps/build_maps.sh work/ukraine.osm.pbf core/target/release/uautonomy-hub work/regions.json "$REGIONS" out/packs
+      - name: Пакет моделі (посилання на Hugging Face)
+        if: env.MODEL_REPO != ''
+        run: |
+          python3 tools/packs/hf_model_pack.py "$MODEL_REPO" "$MODEL_FILE" "$MODEL_ID" "Gemma 4 E2B (телефон)" > out/model.json
+          cat out/model.json
+      - name: Каталог
+        run: |
+          set -euo pipefail
+          BASE="https://github.com/${GITHUB_REPOSITORY}/releases/download/${TAG}"
+          merge=()
+          [ -f out/model.json ] && merge+=(--merge out/model.json)
+          # Попередній каталог: області, які зараз не перезбирали, лишаються.
+          if gh release download "$TAG" -p catalog.json -O out/previous.json 2>/dev/null; then
+            merge+=(--merge out/previous.json)
+          fi
+          core/target/release/uautonomy-hub catalog out/packs --release-url "$BASE" --stage out/stage "${merge[@]}"
+          cp out/packs/catalog.json out/stage/catalog.json
+          ls -la out/stage
+        env:
+          GH_TOKEN: ${{ github.token }}
+      - name: Опублікувати у випуск packs
+        if: env.PUBLISH == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release view "$TAG" >/dev/null 2>&1 || gh release create "$TAG" --prerelease \
+            --title "Пакети Автономії" \
+            --notes "Офлайн-пакети для застосунку «Автономія»: карти областей (OpenStreetMap, ODbL, без критичної інфраструктури). Каталог: catalog.json."
+          gh release upload "$TAG" out/stage/* --clobber
+      - name: Артефакт (перевірка без публікації)
+        if: env.PUBLISH != 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: packs-preview
+          path: out/stage/
+          retention-days: 7

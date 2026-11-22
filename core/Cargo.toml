@@ -22,4 +22,5 @@ tiny_http = "0.12"
 ureq = { version = "3", default-features = false, features = ["rustls"] }
 sysinfo = { version = "0.37", default-features = false, features = ["system", "disk"] }
 if-addrs = "0.13"
+flate2 = { version = "1", default-features = false, features = ["rust_backend"] }
 tempfile = "3"

@@ -1,0 +1,29 @@
+# Об'єкти, які НЕ потрапляють на офлайн-карти «Автономії» (критична
+# інфраструктура та військові об'єкти). Формат: вирази osmium tags-filter.
+# Список попередній і має пройти перевірку фахівців; доповнюйте сюди.
+
+# Енергетика: лінії, підстанції, електростанції, трансформатори
+nwr/power
+nwr/generator:source
+nwr/plant:source
+# Військові об'єкти
+nwr/military
+nwr/landuse=military
+nwr/building=military,bunker,transformer_tower,hangar
+# Трубопроводи, водо- й газопостачання, зв'язок
+nwr/pipeline
+nwr/substance
+nwr/telecom
+nwr/communication:mobile_phone
+nwr/man_made=pipeline,water_works,wastewater_plant,water_tower,reservoir_covered,communications_tower,mast,tower,antenna,petroleum_well,gasometer,storage_tank,works,pumping_station,street_cabinet
+nwr/tower:type=communication
+# Аеродроми
+nwr/aeroway
+# Греблі, шлюзи
+nwr/waterway=dam,weir,lock_gate
+# Небезпечне виробництво
+nwr/industrial=oil,gas,chemical,refinery,fuel,depot
+nwr/landuse=depot
+# Органи влади
+nwr/office=government
+nwr/government

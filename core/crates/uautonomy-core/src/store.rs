@@ -207,6 +207,12 @@ impl PackStore {
 
     /// Атомарно (наскільки дозволяє ФС) замінює встановлену версію.
     pub(crate) fn commit(&self, man: &PackManifest, staging: &Path) -> Result<(), Error> {
+        // Адреси завантаження потрібні лише каталогу.
+        let mut man = man.clone();
+        for f in &mut man.files {
+            f.url = None;
+        }
+        let man = &man;
         fs::write(staging.join("manifest.json"), man.to_json())?;
         let dest = self.pack_dir(&man.id);
         let old = self.root.join("staging").join(format!("{}.old", man.id));
@@ -304,6 +310,7 @@ fn walk(root: &Path, dir: &Path, out: &mut Vec<PackFile>) -> Result<(), Error> {
                 continue;
             }
             out.push(PackFile {
+                url: None,
                 size: fs::metadata(&p)?.len(),
                 sha256: sha256_file(&p)?,
                 path: rel,

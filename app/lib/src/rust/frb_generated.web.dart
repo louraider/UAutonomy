@@ -106,6 +106,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   LocalModel dco_decode_local_model(dynamic raw);
 
   @protected
+  MapHeader dco_decode_map_header(dynamic raw);
+
+  @protected
   ModelView dco_decode_model_view(dynamic raw);
 
   @protected
@@ -118,6 +121,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   DocView? dco_decode_opt_box_autoadd_doc_view(dynamic raw);
 
   @protected
+  Uint8List? dco_decode_opt_list_prim_u_8_strict(dynamic raw);
+
+  @protected
   PackView dco_decode_pack_view(dynamic raw);
 
   @protected
@@ -125,6 +131,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   RagView dco_decode_rag_view(dynamic raw);
+
+  @protected
+  RamStatus dco_decode_ram_status(dynamic raw);
 
   @protected
   RecommendationView dco_decode_recommendation_view(dynamic raw);
@@ -233,6 +242,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   LocalModel sse_decode_local_model(SseDeserializer deserializer);
 
   @protected
+  MapHeader sse_decode_map_header(SseDeserializer deserializer);
+
+  @protected
   ModelView sse_decode_model_view(SseDeserializer deserializer);
 
   @protected
@@ -245,6 +257,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   DocView? sse_decode_opt_box_autoadd_doc_view(SseDeserializer deserializer);
 
   @protected
+  Uint8List? sse_decode_opt_list_prim_u_8_strict(SseDeserializer deserializer);
+
+  @protected
   PackView sse_decode_pack_view(SseDeserializer deserializer);
 
   @protected
@@ -252,6 +267,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   RagView sse_decode_rag_view(SseDeserializer deserializer);
+
+  @protected
+  RamStatus sse_decode_ram_status(SseDeserializer deserializer);
 
   @protected
   RecommendationView sse_decode_recommendation_view(
@@ -391,6 +409,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   void sse_encode_local_model(LocalModel self, SseSerializer serializer);
 
   @protected
+  void sse_encode_map_header(MapHeader self, SseSerializer serializer);
+
+  @protected
   void sse_encode_model_view(ModelView self, SseSerializer serializer);
 
   @protected
@@ -409,6 +430,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  void sse_encode_opt_list_prim_u_8_strict(
+    Uint8List? self,
+    SseSerializer serializer,
+  );
+
+  @protected
   void sse_encode_pack_view(PackView self, SseSerializer serializer);
 
   @protected
@@ -416,6 +443,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   void sse_encode_rag_view(RagView self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_ram_status(RamStatus self, SseSerializer serializer);
 
   @protected
   void sse_encode_recommendation_view(

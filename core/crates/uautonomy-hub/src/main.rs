@@ -8,6 +8,12 @@
 //!                       [--version 0.1.0] [--license CC-BY-4.0] [--region kyiv] [--model <id>]
 //! uautonomy-hub export  <тека-пакета> <файл.uapack>
 //! uautonomy-hub catalog <тека-з-пакетами> [--base-url https://...]
+//!                       [--release-url https://github.com/.../releases/download/<tag> --stage <тека>]
+//!                       [--merge зовнішні-пакети.json]...   (додає лише відсутні id)
+//! uautonomy-hub regions                            (області для карт, JSON)
+//!
+//! `--release-url` / `--stage`: для плаского хостингу (GitHub Releases) кожен
+//! файл копіюється в `--stage` під іменем `<id>--<шлях>` і отримує пряму адресу.
 //! ```
 
 use std::path::{Path, PathBuf};
@@ -25,6 +31,13 @@ fn main() -> ExitCode {
         Some("pack") => pack(&args[1..]),
         Some("export") => export(&args[1..]),
         Some("catalog") => catalog(&args[1..]),
+        Some("regions") => {
+            println!(
+                "{}",
+                serde_json::to_string_pretty(uautonomy_core::regions::REGIONS).unwrap()
+            );
+            Ok(())
+        }
         _ => {
             eprintln!(
                 "uautonomy-hub {}\nКоманди: serve, install, pack, export, catalog (див. документацію в main.rs)",
@@ -166,10 +179,45 @@ fn catalog(args: &[String]) -> R {
         .next()
         .ok_or("потрібна тека з пакетами")?;
     let mut packs = Vec::new();
+    let mut folders = std::collections::HashMap::new();
     for e in std::fs::read_dir(&dir)? {
-        let m = e?.path().join("manifest.json");
+        let folder = e?.path();
+        let m = folder.join("manifest.json");
         if m.is_file() {
-            packs.push(PackManifest::from_json(&std::fs::read_to_string(m)?)?);
+            let man = PackManifest::from_json(&std::fs::read_to_string(m)?)?;
+            folders.insert(man.id.clone(), folder);
+            packs.push(man);
+        }
+    }
+    if let Some(release) = opt(args, "--release-url") {
+        let stage =
+            PathBuf::from(opt(args, "--stage").ok_or("з --release-url потрібно --stage <тека>")?);
+        std::fs::create_dir_all(&stage)?;
+        for p in &mut packs {
+            for f in &mut p.files {
+                let flat = format!("{}--{}", p.id, f.path.replace('/', "--"));
+                let src = folders[&p.id].join(&f.path);
+                let dst = stage.join(&flat);
+                if std::fs::hard_link(&src, &dst).is_err() {
+                    std::fs::copy(&src, &dst)?;
+                }
+                f.url = Some(format!("{}/{}", release.trim_end_matches('/'), flat));
+            }
+        }
+    }
+    for extra in opts(args, "--merge") {
+        let text = std::fs::read_to_string(&extra)?;
+        let more: Vec<PackManifest> = match serde_json::from_str::<Catalog>(&text) {
+            Ok(c) => c.packs,
+            Err(_) => serde_json::from_str(&text)?,
+        };
+        // Нові пакети з теки мають перевагу; з --merge додаються лише ті,
+        // яких ще немає (так попередній каталог не затирає свіжі збірки).
+        for m in more {
+            m.validate()?;
+            if !packs.iter().any(|p| p.id == m.id) {
+                packs.push(m);
+            }
         }
     }
     packs.sort_by(|a, b| a.id.cmp(&b.id));

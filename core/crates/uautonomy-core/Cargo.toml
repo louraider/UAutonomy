@@ -20,6 +20,7 @@ tiny_http.workspace = true
 ureq.workspace = true
 sysinfo.workspace = true
 if-addrs.workspace = true
+flate2.workspace = true
 
 [dev-dependencies]
 tempfile.workspace = true

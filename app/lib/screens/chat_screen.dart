@@ -30,6 +30,7 @@ class _ChatScreenState extends State<ChatScreen> {
   RecommendationView? _rec;
   bool _loading = false;
   bool _busy = false;
+  String? _diag;
 
   @override
   void initState() {
@@ -54,7 +55,14 @@ class _ChatScreenState extends State<ChatScreen> {
   Future<void> _load(LocalModel m) async {
     setState(() => _loading = true);
     try {
+      final before = await ramStatus();
       await _ai.load(m);
+      final after = await ramStatus();
+      final used = before.availableMb.toInt() - after.availableMb.toInt();
+      _diag =
+          'Завантажено за ${(_ai.lastLoadTime!.inMilliseconds / 1000).toStringAsFixed(1)} с · '
+          'зайняло ≈${(used / 1024).toStringAsFixed(1)} ГБ ОЗП · '
+          'вільно ${(after.availableMb.toInt() / 1024).toStringAsFixed(1)} ГБ';
     } catch (e) {
       if (mounted) showError(context, 'Не вдалося запустити модель: $e');
     } finally {
@@ -180,6 +188,11 @@ class _ChatScreenState extends State<ChatScreen> {
           ),
         ),
         if (_loading) const LinearProgressIndicator(),
+        if (_diag != null && !_loading)
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Text(_diag!, style: const TextStyle(fontSize: 12)),
+          ),
         Expanded(
           child: ListView.builder(
             reverse: true,
@@ -269,6 +282,20 @@ class _AnswerTile extends StatelessWidget {
             )
           else
             SelectableText(answer.text.toString(), style: t.bodyLarge),
+          if (answer.done &&
+              answer.error == null &&
+              answer.firstTokenMs != null)
+            Padding(
+              padding: const EdgeInsets.only(top: 4),
+              child: Text(
+                [
+                  'перше слово за ${(answer.firstTokenMs! / 1000).toStringAsFixed(1)} с',
+                  if (answer.tokensPerSecond != null)
+                    '≈${answer.tokensPerSecond!.toStringAsFixed(1)} токен/с',
+                ].join(' · '),
+                style: t.bodySmall,
+              ),
+            ),
           if (answer.sources.isNotEmpty) ...[
             const SizedBox(height: 8),
             Wrap(

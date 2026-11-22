@@ -42,20 +42,24 @@ cargo run -p uautonomy-hub -- serve   --data /srv/autonomy --app avtonomiia.apk
 віддає `/packs/catalog.json` зі своїми пакетами, тож пакети розходяться
 телефон-телефон без інтернету.
 
-Публічний сервер пакетів ще не розгорнуто: поки адресу каталогу вводять вручну.
+Офіційний каталог — випуск `packs` у GitHub Releases проєкту
+(`https://github.com/louraider/UAutonomy/releases/download/packs/catalog.json`),
+його застосунок відкриває за замовчуванням. GitHub Releases безкоштовні й
+підтримують докачку; межа — 2 ГБ на файл, тому моделі лежать на Hugging Face,
+а в каталозі для них є пряма адреса (`files[].url`) і SHA-256 з LFS.
 
 ## Карти
 
-Застосунок показує растрові PMTiles через `flutter_map_pmtiles` і не ходить
-по тайли в інтернет. Пакет області збирається так:
+Карти векторні: PMTiles зі схемою OpenMapTiles. Ядро читає тайли
+(`pmtiles.rs`), застосунок малює їх через `vector_map_tiles`, інтернет-тайлів
+немає. Пакети збирає `tools/maps/build_maps.sh` у GitHub Actions
+(workflow «Пакети»):
 
-1. Вирізати область з OSM (Geofabrik `ukraine-latest.osm.pbf`) за `bbox` з `regions.rs`.
-2. **Прибрати критичну інфраструктуру** (енергетика, військові об'єкти, водоканали тощо) до рендерингу.
-3. Відрендерити тайли z5–z14 власним стилем (масові тайли з tile.openstreetmap.org брати заборонено правилами OSMF).
-4. Запакувати у PMTiles (`pmtiles convert`), далі `uautonomy-hub pack --kind map --region <id>`.
-
-Векторні PMTiles (менші за розміром) — наступний крок: зараз пакети
-`flutter_map_pmtiles` і `vector_map_tiles_pmtiles` несумісні за залежностями.
+1. OSM України з Geofabrik.
+2. **Прибрати критичну інфраструктуру** (`tools/maps/exclude-tags.txt`: енергетика, військові об'єкти, трубопроводи, зв'язок, аеродроми, греблі, небезпечне виробництво, органи влади). Список попередній, його мають перевірити фахівці.
+3. Вирізати область за `bbox` з `regions.rs` (`osmium extract`).
+4. `tilemaker` → `.pmtiles` z0–z14. Моря немає (шари з shapefile вимкнено), лише дані OSM.
+5. `uautonomy-hub pack --kind map --region <id>`.
 
 ## Моделі
 

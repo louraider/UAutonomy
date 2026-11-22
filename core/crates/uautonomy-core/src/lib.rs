@@ -21,6 +21,7 @@ pub mod download;
 pub mod hardware;
 pub mod models;
 pub mod pack;
+pub mod pmtiles;
 pub mod rag;
 pub mod regions;
 pub mod search;

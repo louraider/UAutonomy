@@ -30,6 +30,9 @@ Future<LocalModel> importModelFile({required String path}) =>
 Future<void> removeModelFile({required String path}) =>
     RustLib.instance.api.crateApiDeviceRemoveModelFile(path: path);
 
+/// Поточна пам'ять (для діагностики ШІ: скільки з'їла модель).
+Future<RamStatus> ramStatus() => RustLib.instance.api.crateApiDeviceRamStatus();
+
 class HardwareView {
   final BigInt totalRamMb;
   final BigInt availableRamMb;
@@ -170,6 +173,24 @@ class ModelView {
           license == other.license &&
           packId == other.packId &&
           notes == other.notes;
+}
+
+class RamStatus {
+  final BigInt totalMb;
+  final BigInt availableMb;
+
+  const RamStatus({required this.totalMb, required this.availableMb});
+
+  @override
+  int get hashCode => totalMb.hashCode ^ availableMb.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is RamStatus &&
+          runtimeType == other.runtimeType &&
+          totalMb == other.totalMb &&
+          availableMb == other.availableMb;
 }
 
 class RecommendationView {

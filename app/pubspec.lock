@@ -145,6 +145,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.3.2"
+  executor_lib:
+    dependency: transitive
+    description:
+      name: executor_lib
+      sha256: "95ddf2957d9942d9702855b38dd49677f0ee6a8b77d7b16c0e509c7669d17386"
+      url: "https://pub.dev"
+    source: hosted
+    version: "1.1.2"
   fake_async:
     dependency: transitive
     description:
@@ -256,14 +264,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "8.3.2"
-  flutter_map_pmtiles:
-    dependency: "direct main"
-    description:
-      name: flutter_map_pmtiles
-      sha256: "407e1ab3dea659416c0409595b3bc8bde00058b09137ac256c85bccf073136f0"
-      url: "https://pub.dev"
-    source: hosted
-    version: "1.1.0"
   flutter_rust_bridge:
     dependency: "direct main"
     description:
@@ -311,6 +311,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "4.1.2"
+  idb_shim:
+    dependency: transitive
+    description:
+      name: idb_shim
+      sha256: "507d8f3154fa4e41165941c5aa8509c6bf155bb30f76ba25a00d1e7ba1dd64c9"
+      url: "https://pub.dev"
+    source: hosted
+    version: "2.11.3"
   image:
     dependency: transitive
     description:
@@ -556,22 +564,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "2.1.8"
-  pmtiles:
-    dependency: transitive
-    description:
-      name: pmtiles
-      sha256: f51ada966879d3b68edc35b3a83b5d31a274a70ae1d3275bd0a9e2a9f6d53c61
-      url: "https://pub.dev"
-    source: hosted
-    version: "2.2.0"
-  pool:
-    dependency: transitive
-    description:
-      name: pool
-      sha256: "4177f68c237ea2128d1bee66ac17b2ce05ba3dbaafcbdd54c5d40a39d0b6b11c"
-      url: "https://pub.dev"
-    source: hosted
-    version: "1.5.3"
   posix:
     dependency: transitive
     description:
@@ -600,10 +592,10 @@ packages:
     dependency: transitive
     description:
       name: protobuf
-      sha256: "13b6717366aa7ec3792dd62c19c7d33a785708224365f2db23c5ca01f1c1a0f2"
+      sha256: "68645b24e0716782e58948f8467fd42a880f255096a821f9e7d0ec625b00c84d"
       url: "https://pub.dev"
     source: hosted
-    version: "6.1.0"
+    version: "3.1.0"
   pub_semver:
     dependency: transitive
     description:
@@ -643,6 +635,14 @@ packages:
       relative: true
     source: path
     version: "0.0.1"
+  sembast:
+    dependency: transitive
+    description:
+      name: sembast
+      sha256: "4f71f8c95105918fa207065429c913f38d0fb05fec9f3a745bbf4c113f5d482b"
+      url: "https://pub.dev"
+    source: hosted
+    version: "3.10.1"
   simple_sparse_list:
     dependency: transitive
     description:
@@ -696,6 +696,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "0.3.1"
+  synchronized:
+    dependency: transitive
+    description:
+      name: synchronized
+      sha256: a77637ebe1460f3b48cac89a790d2eb634f0a8593cab0d3f340c6db174ba9b94
+      url: "https://pub.dev"
+    source: hosted
+    version: "3.6.1+1"
   term_glyph:
     dependency: transitive
     description:
@@ -736,6 +744,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "4.6.0"
+  vector_map_tiles:
+    dependency: "direct main"
+    description:
+      name: vector_map_tiles
+      sha256: "42dce00e0f69352663f4c9c78fe5cc900704f6dd46019640ebda0d84cc14ce68"
+      url: "https://pub.dev"
+    source: hosted
+    version: "9.0.0-beta.13"
   vector_math:
     dependency: transitive
     description:
@@ -744,6 +760,22 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "2.4.3"
+  vector_tile:
+    dependency: transitive
+    description:
+      name: vector_tile
+      sha256: "7ae290246e3a8734422672dbe791d3f7b8ab631734489fc6d405f1cc2080e38c"
+      url: "https://pub.dev"
+    source: hosted
+    version: "2.0.1"
+  vector_tile_renderer:
+    dependency: "direct main"
+    description:
+      name: vector_tile_renderer
+      sha256: "982ae5d8f0ab285463a4cd62e711c8f9a36b9b3112b5a471ae8d4f4838f31537"
+      url: "https://pub.dev"
+    source: hosted
+    version: "6.1.0"
   vm_service:
     dependency: transitive
     description:

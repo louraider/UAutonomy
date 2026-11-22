@@ -7,11 +7,65 @@ import '../frb_generated.dart';
 
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
+// These functions are ignored because they are not marked as `pub`: `open_map`
+
 List<RegionView> mapRegions() => RustLib.instance.api.crateApiMapsMapRegions();
 
 /// Область за координатами (для «моя область» з GPS).
 String? regionAt({required double lat, required double lon}) =>
     RustLib.instance.api.crateApiMapsRegionAt(lat: lat, lon: lon);
+
+Future<MapHeader> mapHeader({required String path}) =>
+    RustLib.instance.api.crateApiMapsMapHeader(path: path);
+
+/// Тайл z/x/y з файлу карти (розпакований). `None` — тайла немає.
+Future<Uint8List?> mapTile({
+  required String path,
+  required int z,
+  required int x,
+  required int y,
+}) => RustLib.instance.api.crateApiMapsMapTile(path: path, z: z, x: x, y: y);
+
+class MapHeader {
+  final int minZoom;
+  final int maxZoom;
+
+  /// [захід, південь, схід, північ]
+  final Float64List bounds;
+  final double centerLat;
+  final double centerLon;
+  final bool vector;
+
+  const MapHeader({
+    required this.minZoom,
+    required this.maxZoom,
+    required this.bounds,
+    required this.centerLat,
+    required this.centerLon,
+    required this.vector,
+  });
+
+  @override
+  int get hashCode =>
+      minZoom.hashCode ^
+      maxZoom.hashCode ^
+      bounds.hashCode ^
+      centerLat.hashCode ^
+      centerLon.hashCode ^
+      vector.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is MapHeader &&
+          runtimeType == other.runtimeType &&
+          minZoom == other.minZoom &&
+          maxZoom == other.maxZoom &&
+          bounds == other.bounds &&
+          centerLat == other.centerLat &&
+          centerLon == other.centerLon &&
+          vector == other.vector;
+}
 
 class RegionView {
   final String id;
