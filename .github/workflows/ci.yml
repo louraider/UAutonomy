@@ -128,7 +128,7 @@ jobs:
         working-directory: app
         run: |
           for i in 1 2 3; do
-            flutter build apk --debug --target-platform android-x64 integration_test/app_test.dart && exit 0
+            flutter build apk --debug --target-platform android-x64 -t integration_test/app_test.dart && exit 0
             echo "::warning::спроба $i не вдалася, повтор"; sleep 30
           done
           exit 1
