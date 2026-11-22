@@ -28,7 +28,11 @@ class _ShareScreenState extends State<ShareScreen> {
       if (apk == null) return const [];
       // Віддаємо під зрозумілою назвою.
       final dest = File('${Directory.systemTemp.path}/avtonomiia.apk');
-      await File(apk).copy(dest.path);
+      final src = File(apk);
+      // Копіюємо лише раз: APK важить десятки мегабайтів.
+      if (!dest.existsSync() || dest.lengthSync() != src.lengthSync()) {
+        await src.copy(dest.path);
+      }
       return [dest.path];
     } catch (_) {
       return const [];

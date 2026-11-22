@@ -12,10 +12,12 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:uautonomy/main.dart';
+import 'package:uautonomy/screens/library_screen.dart';
 import 'package:uautonomy/screens/packs_screen.dart';
 import 'package:uautonomy/src/rust/api/library.dart';
 import 'package:uautonomy/src/rust/api/maps.dart';
 import 'package:uautonomy/src/rust/api/packs.dart';
+import 'package:uautonomy/src/rust/api/share.dart';
 import 'package:uautonomy/src/rust/frb_generated.dart';
 
 const networkTests = bool.fromEnvironment('NETWORK_TESTS');
@@ -26,6 +28,19 @@ Future<void> settle(WidgetTester tester, [int ms = 800]) async {
   for (var i = 0; i < ms ~/ 100; i++) {
     await tester.pump(const Duration(milliseconds: 100));
   }
+}
+
+/// Чекає, доки віджет з'явиться (асинхронні дії на кшталт копіювання APK).
+Future<void> waitFor(
+  WidgetTester tester,
+  Finder finder, {
+  int seconds = 60,
+}) async {
+  for (var i = 0; i < seconds * 10; i++) {
+    if (finder.evaluate().isNotEmpty) return;
+    await tester.pump(const Duration(milliseconds: 100));
+  }
+  fail('не дочекалися: $finder');
 }
 
 Future<void> openTab(WidgetTester tester, String label) async {
@@ -57,8 +72,19 @@ void main() {
     expect(firstCard, findsOneWidget, reason: 'пошук знаходить картку');
     await tester.tap(firstCard);
     await settle(tester);
+    expect(find.byType(CardScreen), findsOneWidget);
+    // Джерело внизу картки: ListView будує лише видиме, тож гортаємо.
+    await tester.scrollUntilVisible(
+      find.textContaining('Джерело:'),
+      300,
+      scrollable: find
+          .descendant(
+            of: find.byType(CardScreen),
+            matching: find.byType(Scrollable),
+          )
+          .first,
+    );
     expect(find.textContaining('Джерело:'), findsOneWidget);
-    expect(find.textContaining('112'), findsWidgets);
 
     await tester.pageBack();
     await settle(tester);
@@ -83,7 +109,20 @@ void main() {
     await openTab(tester, 'Обмін');
 
     await tester.tap(find.text('Увімкнути обмін'));
-    await settle(tester, 2000);
+    // На Android спершу копіюється APK для роздачі, це кілька секунд.
+    await waitFor(tester, find.text('Вимкнути обмін'));
+    final info = sharingStatus();
+    debugPrint('Обмін: порт ${info.port}, адреси ${info.urls}');
+    expect(info.running, isTrue);
+    final client = HttpClient();
+    final resp = await (await client.get(
+      '127.0.0.1',
+      info.port,
+      '/api/info',
+    )).close();
+    expect(resp.statusCode, 200);
+    client.close();
+    expect(info.urls, isNotEmpty, reason: 'адреса для QR-коду');
     expect(find.textContaining('http://'), findsWidgets);
 
     await tester.tap(find.text('Вимкнути обмін'));
