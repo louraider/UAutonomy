@@ -19,6 +19,10 @@ on:
       model_id:
         description: "id моделі з core/.../models.rs"
         default: "gemma-4-e2b-it-q4"
+      filter_infra:
+        description: "Прибрати об'єкти зі списку tools/maps/exclude-tags.txt (за замовчуванням карти повні)"
+        type: boolean
+        default: false
       publish:
         description: "Опублікувати у випуск packs"
         type: boolean
@@ -42,6 +46,7 @@ env:
   MODEL_FILE: ${{ github.event_name == 'workflow_dispatch' && inputs.model_file || 'gemma-4-E2B-it-Q4_K_M.gguf' }}
   MODEL_ID: ${{ github.event_name == 'workflow_dispatch' && inputs.model_id || 'gemma-4-e2b-it-q4' }}
   PUBLISH: ${{ github.event_name == 'workflow_dispatch' && inputs.publish }}
+  FILTER_INFRA: ${{ github.event_name == 'workflow_dispatch' && inputs.filter_infra && '1' || '0' }}
   TAG: packs
 
 jobs:
@@ -98,7 +103,7 @@ jobs:
         run: |
           gh release view "$TAG" >/dev/null 2>&1 || gh release create "$TAG" --prerelease \
             --title "Пакети Автономії" \
-            --notes "Офлайн-пакети для застосунку «Автономія»: карти областей (OpenStreetMap, ODbL, без критичної інфраструктури). Каталог: catalog.json."
+            --notes "Офлайн-пакети для застосунку «Автономія»: карти областей (OpenStreetMap, ODbL). Каталог: catalog.json."
           gh release upload "$TAG" out/stage/* --clobber
       - name: Артефакт (перевірка без публікації)
         if: env.PUBLISH != 'true'
