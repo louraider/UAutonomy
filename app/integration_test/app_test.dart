@@ -14,6 +14,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:uautonomy/main.dart';
 import 'package:uautonomy/screens/library_screen.dart';
 import 'package:uautonomy/screens/packs_screen.dart';
+import 'package:uautonomy/screens/share_screen.dart';
 import 'package:uautonomy/src/rust/api/library.dart';
 import 'package:uautonomy/src/rust/api/maps.dart';
 import 'package:uautonomy/src/rust/api/packs.dart';
@@ -123,7 +124,23 @@ void main() {
     expect(resp.statusCode, 200);
     client.close();
     expect(info.urls, isNotEmpty, reason: 'адреса для QR-коду');
-    expect(find.textContaining('http://'), findsWidgets);
+    final shareList = find
+        .descendant(
+          of: find.byType(ShareScreen),
+          matching: find.byType(Scrollable),
+        )
+        .first;
+    // Адреса під QR-кодом (SelectableText); ListView будує лише видиме.
+    final address = find.byWidgetPredicate(
+      (w) => w is SelectableText && (w.data ?? '').startsWith('http://'),
+    );
+    await tester.scrollUntilVisible(address.first, 200, scrollable: shareList);
+    expect(address, findsWidgets);
+    await tester.scrollUntilVisible(
+      find.text('Вимкнути обмін'),
+      -200,
+      scrollable: shareList,
+    );
 
     await tester.tap(find.text('Вимкнути обмін'));
     await settle(tester, 1000);
