@@ -21,6 +21,9 @@ REQUIRED = ("id", "category", "title", "steps", "source")
 
 
 def main() -> int:
+    # Консоль Windows у CI — cp1252; друкуємо українською в UTF-8.
+    for stream in (sys.stdout, sys.stderr):
+        stream.reconfigure(encoding="utf-8")
     ap = argparse.ArgumentParser()
     ap.add_argument("--content", default=str(ROOT / "content"))
     ap.add_argument("--check", action="store_true")
