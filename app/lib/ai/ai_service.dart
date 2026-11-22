@@ -13,6 +13,19 @@ class AiAnswer {
   final StringBuffer text = StringBuffer();
   bool done = false;
   String? error;
+
+  /// Діагностика для тестів на телефонах.
+  final Stopwatch clock = Stopwatch()..start();
+  int? firstTokenMs;
+  int chunks = 0;
+  int? totalMs;
+
+  /// Приблизна швидкість: шматки потоку ≈ токени.
+  double? get tokensPerSecond {
+    final t = totalMs, f = firstTokenMs;
+    if (t == null || f == null || t <= f || chunks < 2) return null;
+    return (chunks - 1) * 1000 / (t - f);
+  }
 }
 
 /// Обгортка над llamadart. Модель змінна: будь-який файл GGUF чи
@@ -24,16 +37,21 @@ class AiService {
   AiAnswer? _current;
 
   LocalModel? get model => _model;
+
+  /// Скільки тривало останнє завантаження моделі.
+  Duration? lastLoadTime;
   bool get isLoaded => _engine != null;
 
   Future<void> load(LocalModel m) async {
     if (_model?.path == m.path && _engine != null) return;
     await unload();
+    final sw = Stopwatch()..start();
     _engine = await LlamaEngine.load(
       LlamaModel(ModelSource.path(m.path)),
       params: ModelParams(contextSize: m.contextSize),
     );
     _model = m;
+    lastLoadTime = sw.elapsed;
   }
 
   Future<void> unload() async {
@@ -85,6 +103,9 @@ class AiService {
         )
         .listen(
           (chunk) {
+            if (chunk.text.isEmpty) return;
+            answer.firstTokenMs ??= answer.clock.elapsedMilliseconds;
+            answer.chunks++;
             answer.text.write(chunk.text);
             controller.add(answer);
           },
@@ -97,6 +118,7 @@ class AiService {
               ..close();
           },
           onDone: () {
+            answer.totalMs = answer.clock.elapsedMilliseconds;
             answer.done = true;
             controller
               ..add(answer)

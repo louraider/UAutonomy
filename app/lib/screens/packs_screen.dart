@@ -8,6 +8,10 @@ import 'package:uautonomy/screens/common.dart';
 import 'package:uautonomy/src/rust/api/device.dart';
 import 'package:uautonomy/src/rust/api/packs.dart';
 
+/// Офіційний каталог: пакети лежать у GitHub Releases проєкту (тег `packs`).
+const officialCatalogUrl =
+    'https://github.com/louraider/UAutonomy/releases/download/packs/catalog.json';
+
 const _tierTitles = {
   'base': 'Базовий',
   'pocket': 'Кишеньковий',
@@ -33,7 +37,7 @@ class PacksScreen extends StatefulWidget {
 }
 
 class _PacksScreenState extends State<PacksScreen> {
-  final _url = TextEditingController();
+  final _url = TextEditingController(text: officialCatalogUrl);
   List<PackView> _installed = const [];
   List<PackView> _catalog = const [];
   HardwareView? _hw;

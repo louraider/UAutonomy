@@ -35,6 +35,11 @@ pub struct PackFile {
     pub size: u64,
     /// SHA-256 у hex.
     pub sha256: String,
+    /// Пряма адреса файлу, якщо він лежить не за `{base_url}/{id}/{path}`
+    /// (GitHub Releases, Hugging Face). Лише в каталозі; у встановленому
+    /// маніфесті не потрібна.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub url: Option<String>,
 }
 
 /// Опис пакета: лежить як `manifest.json` у теці пакета і в каталозі.
@@ -139,6 +144,9 @@ impl Catalog {
     }
 
     pub fn file_url(&self, pack: &PackManifest, file: &PackFile) -> String {
+        if let Some(u) = &file.url {
+            return u.clone();
+        }
         format!(
             "{}/{}/{}",
             self.base_url.trim_end_matches('/'),

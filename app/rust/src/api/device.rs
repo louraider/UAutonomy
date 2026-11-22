@@ -204,3 +204,17 @@ pub fn remove_model_file(path: String) -> anyhow::Result<()> {
     std::fs::remove_file(p)?;
     Ok(())
 }
+
+pub struct RamStatus {
+    pub total_mb: u64,
+    pub available_mb: u64,
+}
+
+/// Поточна пам'ять (для діагностики ШІ: скільки з'їла модель).
+pub fn ram_status() -> RamStatus {
+    let h = hardware::detect(&data_dir());
+    RamStatus {
+        total_mb: h.total_ram_mb,
+        available_mb: h.available_ram_mb,
+    }
+}
