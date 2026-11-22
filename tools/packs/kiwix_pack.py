@@ -12,6 +12,7 @@
 import json
 import re
 import sys
+import urllib.error
 import urllib.request
 
 BASE = "https://download.kiwix.org/zim"
@@ -33,14 +34,13 @@ def listing(d):
     return listings[d]
 
 
-out = []
-for c in json.load(open(sys.argv[1], encoding="utf-8")):
+def pack(c):
     files = [f for f in listing(c["dir"]) if re.fullmatch(re.escape(c["prefix"]) + r"_\d{4}-\d{2}\.zim", f)]
     if not files:
         stem = c["prefix"].split("_")[0] + "_" + (c["prefix"].split("_")[1] if "_" in c["prefix"] else "")
         similar = [f for f in listing(c["dir"]) if f.startswith(stem)][-15:]
         print(f"ПРОПУСК {c['id']}: немає {c['dir']}/{c['prefix']}_*.zim. Схожі: {similar}", file=sys.stderr)
-        continue
+        return None
     name = files[-1]
     url = f"{BASE}/{c['dir']}/{name}"
     # Metalink поруч із файлом містить і розмір, і SHA-256.
@@ -55,9 +55,9 @@ for c in json.load(open(sys.argv[1], encoding="utf-8")):
             sha = r.read().decode().split()[0].lower()
     if not re.fullmatch(r"[0-9a-f]{64}", sha):
         print(f"ПРОПУСК {c['id']}: дивний SHA-256 {sha!r}", file=sys.stderr)
-        continue
+        return None
     version = re.search(r"_(\d{4}-\d{2})\.zim$", name).group(1).replace("-", ".")
-    out.append({
+    return {
         "id": c["id"],
         "tier": c["tier"],
         "kind": "content",
@@ -66,7 +66,22 @@ for c in json.load(open(sys.argv[1], encoding="utf-8")):
         "version": version,
         "content_license": c["license"],
         "files": [{"path": name, "size": size, "sha256": sha, "url": url}],
-    })
-    print(f"{c['id']}: {name}, {size / 1e9:.2f} ГБ", file=sys.stderr)
+    }
 
-json.dump(out, sys.stdout, ensure_ascii=False, indent=1)
+
+def main():
+    out = []
+    for c in json.load(open(sys.argv[1], encoding="utf-8")):
+        try:
+            p = pack(c)
+        except (urllib.error.URLError, OSError, ValueError, AttributeError) as e:
+            print(f"ПРОПУСК {c['id']}: {e}", file=sys.stderr)
+            continue
+        if p:
+            out.append(p)
+            f = p["files"][0]
+            print(f"{c['id']}: {f['path']}, {f['size'] / 1e9:.2f} ГБ", file=sys.stderr)
+    json.dump(out, sys.stdout, ensure_ascii=False, indent=1)
+
+
+main()

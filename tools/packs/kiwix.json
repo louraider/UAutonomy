@@ -13,6 +13,6 @@
    "title": "Вікіпедія українською (стислі статті)", "tier": "family", "license": "CC-BY-SA-4.0"},
   {"id": "zim-wikipedia-uk-nopic", "dir": "wikipedia", "prefix": "wikipedia_uk_all_nopic",
    "title": "Вікіпедія українською (повні статті без зображень)", "tier": "community", "license": "CC-BY-SA-4.0"},
-  {"id": "zim-mdwiki-en", "dir": "mdwiki", "prefix": "mdwiki_en_all_maxi",
+  {"id": "zim-mdwiki-en", "dir": "other", "prefix": "mdwiki_en_all_maxi",
    "title": "WikiProject Medicine: медична енциклопедія (англ.)", "tier": "family", "license": "CC-BY-SA-4.0"}
 ]
