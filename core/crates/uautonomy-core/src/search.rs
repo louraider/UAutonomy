@@ -69,6 +69,7 @@ const CHUNK_CHARS: usize = 900;
 const K1: f32 = 1.2;
 const B: f32 = 0.75;
 const TITLE_WEIGHT: u32 = 3;
+const TITLE_BONUS: f32 = 4.0;
 
 #[derive(Default)]
 pub struct Library {
@@ -268,6 +269,12 @@ impl Library {
             .map(|(i, c)| (i, self.bm25(q, &c.tf, c.len)))
             .filter(|(_, s)| *s > 0.0)
             .collect();
+        // Збіг із заголовком — найсильніший сигнал: «кровотеча» має бути
+        // вище за довгу картку, де кровотеча лише згадується.
+        for (i, s) in scored.iter_mut() {
+            let d = &self.docs[self.chunks[*i].doc];
+            *s += TITLE_BONUS * title_overlap(&d.title, q);
+        }
         scored.sort_by(|a, b| b.1.total_cmp(&a.1));
         scored.truncate(limit);
         scored
