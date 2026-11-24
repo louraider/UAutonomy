@@ -3,6 +3,9 @@ name: Пакети (карти, моделі) → GitHub Releases
 # Публікація: Actions → «Пакети» → Run workflow. Файли лягають у випуск
 # з тегом `packs`, звідки їх бере застосунок (каталог за замовчуванням).
 # На PR, що змінює інструменти карт, збирається лише Київ без публікації.
+# Щопонеділка за розкладом перевіряються нові версії енциклопедій Kiwix:
+# якщо є — каталог перепідписується з ними (карти й модель не чіпаються,
+# лишаються з попереднього каталогу); якщо немає — нічого не збирається.
 
 on:
   workflow_dispatch:
@@ -31,6 +34,8 @@ on:
         description: "Опублікувати у випуск packs"
         type: boolean
         default: true
+  schedule:
+    - cron: "23 5 * * 1"
   pull_request:
     paths:
       - "tools/maps/**"
@@ -44,18 +49,41 @@ concurrency:
   group: packs-${{ github.ref }}
   cancel-in-progress: false
 
+# За розкладом: без карт (none), без моделі (порожньо), з публікацією.
 env:
-  REGIONS: ${{ github.event_name == 'workflow_dispatch' && inputs.regions || 'kyiv' }}
-  MODEL_REPO: ${{ github.event_name == 'workflow_dispatch' && inputs.model_repo || 'unsloth/gemma-4-E2B-it-GGUF' }}
+  REGIONS: ${{ github.event_name == 'workflow_dispatch' && inputs.regions || github.event_name == 'schedule' && 'none' || 'kyiv' }}
+  MODEL_REPO: ${{ github.event_name == 'workflow_dispatch' && inputs.model_repo || github.event_name == 'pull_request' && 'unsloth/gemma-4-E2B-it-GGUF' || '' }}
   MODEL_FILE: ${{ github.event_name == 'workflow_dispatch' && inputs.model_file || 'gemma-4-E2B-it-Q4_K_M.gguf' }}
   MODEL_ID: ${{ github.event_name == 'workflow_dispatch' && inputs.model_id || 'gemma-4-e2b-it-q4' }}
-  PUBLISH: ${{ github.event_name == 'workflow_dispatch' && inputs.publish }}
+  PUBLISH: ${{ github.event_name == 'workflow_dispatch' && inputs.publish || github.event_name == 'schedule' }}
   ZIMS: ${{ github.event_name != 'workflow_dispatch' || inputs.zims }}
   FILTER_INFRA: ${{ github.event_name == 'workflow_dispatch' && inputs.filter_infra && '1' || '0' }}
   TAG: packs
 
 jobs:
+  # Лише за розкладом: чи вийшли нові ZIM. Займає секунди; без змін
+  # важка збірка нижче не запускається.
+  check:
+    if: github.event_name == 'schedule'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    outputs:
+      changed: ${{ steps.diff.outputs.changed }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Нові версії енциклопедій Kiwix
+        id: diff
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          python3 tools/packs/kiwix_pack.py tools/packs/kiwix.json > zims.json
+          gh release download "$TAG" -p catalog.json -O previous.json 2>/dev/null || true
+          python3 tools/packs/zim_changes.py zims.json previous.json | tee -a "$GITHUB_STEP_SUMMARY"
+
   build:
+    needs: check
+    if: ${{ !cancelled() && (needs.check.result == 'skipped' || needs.check.outputs.changed == 'true') }}
     runs-on: ubuntu-latest
     timeout-minutes: 300
     steps:
@@ -70,20 +98,15 @@ jobs:
         run: cargo build --release -p uautonomy-hub --manifest-path core/Cargo.toml && mkdir -p out work
       - name: Інструменти
         run: sudo apt-get update && sudo apt-get install -y osmium-tool && docker pull ghcr.io/systemed/tilemaker:master
-      - name: OSM України (Geofabrik або дзеркало openstreetmap.fr)
+      - name: OSM України (Geofabrik або області з openstreetmap.fr)
         id: osm
         if: env.REGIONS != 'none'
         # На PR недоступність джерела OSM не валить перевірку решти пакетів.
         continue-on-error: ${{ github.event_name == 'pull_request' }}
+        # Geofabrik, а якщо він не пускає раннер — області з openstreetmap.fr,
+        # злиті в один файл (цілого файлу України на дзеркалі немає).
         run: |
-          mkdir -p work
-          for u in https://download.geofabrik.de/europe/ukraine-latest.osm.pbf \
-                   https://download.openstreetmap.fr/extracts/europe/ukraine-latest.osm.pbf; do
-            curl -fL --retry 4 --retry-delay 15 --retry-all-errors -o work/ukraine.osm.pbf "$u" && break
-            echo "::warning::не вдалося завантажити $u"
-            rm -f work/ukraine.osm.pbf
-          done
-          test -s work/ukraine.osm.pbf
+          tools/maps/fetch_ukraine.sh work/ukraine.osm.pbf
           ls -la work
       - name: Карти областей
         if: env.REGIONS != 'none' && steps.osm.outcome == 'success'
