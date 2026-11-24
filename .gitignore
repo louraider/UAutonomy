@@ -7,3 +7,4 @@ target/
 pack-signing*.key
 *.secret
 .signing-keys/
+__pycache__/

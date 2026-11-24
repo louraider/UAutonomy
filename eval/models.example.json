@@ -1,33 +1,48 @@
 {
-  "note": "Скопіюйте у eval/models.json і підправте. base_url: адреса OpenAI-сумісного сервера; model: назва моделі так, як її бачить сервер. Для llama-server назва довільна (сервер має одну модель). Для Ollama і LM Studio вкажіть точну назву з їхнього списку моделей.",
+  "note": "Скопіюйте у eval/models.json і підправте. base_url: адреса OpenAI-сумісного сервера; model: назва моделі так, як її бачить сервер. Для llama-server назва довільна (сервер має одну модель). Для Ollama і LM Studio вкажіть точну назву з їхнього списку моделей. Gemma 4 у llama-server за замовчуванням «думає» і може витратити весь max_tokens на роздуми, лишивши відповідь порожньою; extra.chat_template_kwargs.enable_thinking=false це вимикає, як і застосунок. Поле extra додається в тіло запиту як є.",
   "models": [
     {
       "name": "gemma4-e2b",
       "model": "gemma-4-e2b-it",
       "base_url": "http://127.0.0.1:8080/v1",
       "enabled": true,
-      "note": "Цільова модель для телефону. GGUF Q4_K_M."
+      "note": "Цільова модель для телефону. GGUF Q4_K_M.",
+      "extra": {
+        "chat_template_kwargs": {
+          "enable_thinking": false
+        }
+      }
     },
     {
       "name": "gemma4-e4b",
       "model": "gemma-4-e4b-it",
       "base_url": "http://127.0.0.1:8080/v1",
       "enabled": true,
-      "note": "Цільова модель для ПК."
+      "note": "Цільова модель для ПК.",
+      "extra": {
+        "chat_template_kwargs": {
+          "enable_thinking": false
+        }
+      }
     },
     {
       "name": "gemma4-26b-a4b",
       "model": "gemma-4-26b-a4b-it",
       "base_url": "http://127.0.0.1:8080/v1",
       "enabled": false,
-      "note": "Велика MoE-модель. У 16 ГБ VRAM RTX 4080 Super в Q4 входить впритул; за потреби частина шарів на CPU (-ngl)."
+      "note": "Велика MoE-модель. У 16 ГБ VRAM RTX 4080 Super в Q4 входить впритул; за потреби частина шарів на CPU (-ngl).",
+      "extra": {
+        "chat_template_kwargs": {
+          "enable_thinking": false
+        }
+      }
     },
     {
       "name": "mamaylm",
       "model": "mamaylm-gemma-3-12b-it",
       "base_url": "http://127.0.0.1:8080/v1",
       "enabled": true,
-      "note": "MamayLM (INSAIT), українська донавчена Gemma 3. Перевірте ліцензію ваг перед поширенням."
+      "note": "MamayLM (INSAIT), українська донавчена Gemma 3. Ліцензія Gemma Terms of Use, див. docs/licenses/mamaylm.md. Є новіша v2.0."
     },
     {
       "name": "lapa",
@@ -41,7 +56,12 @@
       "model": "gemma-4-26b-a4b-it",
       "base_url": "http://127.0.0.1:8081/v1",
       "enabled": false,
-      "note": "Модель-суддя для --judge. Краще найсильніша доступна модель на окремому порту; суддя не має бути тією самою моделлю, яку оцінюємо."
+      "note": "Модель-суддя для --judge. Краще найсильніша доступна модель на окремому порту; суддя не має бути тією самою моделлю, яку оцінюємо.",
+      "extra": {
+        "chat_template_kwargs": {
+          "enable_thinking": false
+        }
+      }
     }
   ]
 }
