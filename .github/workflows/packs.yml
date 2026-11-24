@@ -105,6 +105,9 @@ jobs:
         continue-on-error: ${{ github.event_name == 'pull_request' }}
         # Geofabrik, а якщо він не пускає раннер — області з openstreetmap.fr,
         # злиті в один файл (цілого файлу України на дзеркалі немає).
+        # На PR одразу резервний шлях, щоб він не зламався непомітно.
+        env:
+          OSM_MIRROR_ONLY: ${{ github.event_name == 'pull_request' && '1' || '0' }}
         run: |
           tools/maps/fetch_ukraine.sh work/ukraine.osm.pbf
           ls -la work

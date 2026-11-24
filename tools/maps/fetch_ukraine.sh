@@ -9,6 +9,7 @@
 #    (europe/ukraine-latest.osm.pbf — заглушка, 404), зате є всі області
 #    окремо в europe/ukraine/. Качаємо їх, звіряємо MD5 і зливаємо
 #    `osmium merge` (спільні об'єкти на межах областей не дублюються).
+# OSM_MIRROR_ONLY=1 — одразу п. 2 (так PR перевіряє резервний шлях).
 # Потрібні: curl, osmium-tool, md5sum.
 set -euo pipefail
 OUT=$1
@@ -17,6 +18,7 @@ OSMFR=https://download.openstreetmap.fr/extracts/europe/ukraine
 mkdir -p "$(dirname "$OUT")"
 
 for attempt in 1 2 3; do
+  [ "${OSM_MIRROR_ONLY:-0}" = "1" ] && break
   if curl -fL --retry 4 --retry-delay 20 --retry-all-errors --connect-timeout 30 -o "$OUT" "$GEOFABRIK"; then
     echo "Geofabrik: $(du -h "$OUT" | cut -f1)"
     exit 0
