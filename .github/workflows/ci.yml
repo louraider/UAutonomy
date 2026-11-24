@@ -234,3 +234,54 @@ jobs:
       # Той самий тест, що й на Android-емуляторі: довідка, вкладки, обмін,
       # а через мережу ще й підписаний каталог і карта Києва.
       - run: flutter test integration_test/app_test.dart -d windows --dart-define=NETWORK_TESTS=true
+
+  # Після кожного злиття в main: свіжі APK і Windows-збірка в релізі `app`.
+  # Назви файлів сталі, тож посилання з сайту uautonomy.app не змінюються:
+  # https://github.com/louraider/UAutonomy/releases/download/app/avtonomiia.apk
+  release:
+    name: Реліз збірок (app)
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [android, windows, android-e2e, windows-e2e]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    concurrency:
+      group: release-app
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: uautonomy-android-apk
+          path: dist/android
+      - uses: actions/download-artifact@v4
+        with:
+          name: uautonomy-windows
+          path: dist/Avtonomiia
+      - name: Файли релізу
+        working-directory: dist
+        run: |
+          mv android/avtonomiia.apk avtonomiia.apk
+          zip -r -q -9 avtonomiia-windows-x64.zip Avtonomiia
+          sha256sum avtonomiia.apk avtonomiia-windows-x64.zip > SHA256SUMS.txt
+          cat SHA256SUMS.txt
+      - name: Оновити реліз app
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          git tag -f app "$GITHUB_SHA"
+          git push -f origin refs/tags/app
+          NOTES="Тестова збірка з main, коміт ${GITHUB_SHA::7} ($(date -u +%Y-%m-%d)).
+
+          - Android: avtonomiia.apk (підписано постійним ключем, SHA-256 сертифіката в docs/signing.md)
+          - Windows: avtonomiia-windows-x64.zip (розпакуйте й запустіть Avtonomiia/uautonomy.exe)
+          - Контрольні суми: SHA256SUMS.txt
+
+          Медичні картки складено за Наказом МОЗ №441, але лікар їх ще не перевірив."
+          FILES="dist/avtonomiia.apk dist/avtonomiia-windows-x64.zip dist/SHA256SUMS.txt"
+          if gh release view app >/dev/null 2>&1; then
+            gh release upload app $FILES --clobber
+            gh release edit app --notes "$NOTES" --prerelease
+          else
+            gh release create app $FILES --title "Автономія: остання збірка" --notes "$NOTES" --prerelease
+          fi

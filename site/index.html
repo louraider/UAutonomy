@@ -1,0 +1,214 @@
+<!doctype html>
+<html lang="uk">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Автономія: офлайн-бібліотека виживання</title>
+<meta name="description" content="Безкоштовний застосунок для Android і Windows, що працює без інтернету і світла: термінові картки, офлайн-карти України, енциклопедії та локальний ШІ-помічник українською.">
+<meta property="og:title" content="Автономія: офлайн-бібліотека виживання">
+<meta property="og:description" content="Картки «що робити зараз», офлайн-карти, енциклопедії і ШІ-помічник українською. Працює без інтернету. Android і Windows.">
+<meta property="og:url" content="https://uautonomy.app/">
+<meta property="og:type" content="website">
+<meta property="og:locale" content="uk_UA">
+<meta name="theme-color" content="#1f4f8f">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<style>
+  :root {
+    --bg: #f6f4ef; --surface: #ffffff; --text: #1b1d22; --muted: #5a606b;
+    --line: #e2ded4; --accent: #1f4f8f; --accent-text: #ffffff; --yellow: #f2c230;
+    --warn-bg: #fff6d9; --warn-line: #e8c95a; --danger: #b3261e;
+    --radius: 14px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #121417; --surface: #1b1e23; --text: #eceef1; --muted: #a3a9b3;
+      --line: #2c3038; --accent: #6ea3e8; --accent-text: #0d1724; --yellow: #f2c230;
+      --warn-bg: #2a2412; --warn-line: #6b5a1e; --danger: #ff8a80;
+    }
+  }
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font: 17px/1.55 system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans", Ubuntu, sans-serif;
+  }
+  a { color: var(--accent); }
+  .wrap { max-width: 980px; margin: 0 auto; padding: 0 16px; }
+  header.top { display: flex; align-items: center; gap: 10px; padding: 18px 0; }
+  header.top img { width: 34px; height: 34px; }
+  header.top .name { font-weight: 700; font-size: 19px; }
+  header.top nav { margin-left: auto; display: flex; gap: 18px; font-size: 15px; }
+  header.top nav a { color: var(--muted); text-decoration: none; }
+  header.top nav a:hover { color: var(--text); }
+
+  .hero { padding: 36px 0 28px; }
+  .hero h1 { font-size: clamp(30px, 6vw, 50px); line-height: 1.1; margin: 0 0 14px; letter-spacing: -0.01em; }
+  .hero p.lead { font-size: clamp(18px, 2.4vw, 21px); color: var(--muted); max-width: 680px; margin: 0 0 26px; }
+  .stripe { height: 6px; width: 72px; border-radius: 3px; background: linear-gradient(90deg, var(--accent) 50%, var(--yellow) 50%); margin-bottom: 20px; }
+
+  .downloads { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; max-width: 760px; }
+  .dl {
+    display: flex; flex-direction: column; gap: 2px; padding: 16px 18px; border-radius: var(--radius);
+    text-decoration: none; border: 1px solid var(--line); background: var(--surface); color: var(--text);
+  }
+  .dl.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-text); }
+  .dl strong { font-size: 18px; }
+  .dl span { font-size: 14px; opacity: .85; }
+  .dl[aria-disabled="true"] { opacity: .55; pointer-events: none; }
+  .release-note { font-size: 14px; color: var(--muted); margin: 12px 0 0; min-height: 1.5em; }
+
+  section { padding: 34px 0; border-top: 1px solid var(--line); }
+  section h2 { font-size: 26px; margin: 0 0 18px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; }
+  .card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 18px; }
+  .card h3 { margin: 0 0 6px; font-size: 18px; }
+  .card p { margin: 0; color: var(--muted); font-size: 15.5px; }
+  .tag { display: inline-block; font-size: 12.5px; padding: 2px 8px; border-radius: 99px; background: var(--warn-bg); border: 1px solid var(--warn-line); margin-top: 10px; color: var(--text); }
+
+  .warn { background: var(--warn-bg); border: 1px solid var(--warn-line); border-radius: var(--radius); padding: 18px 20px; }
+  .warn p { margin: 0 0 10px; } .warn p:last-child { margin: 0; }
+  .sos { font-weight: 700; color: var(--danger); white-space: nowrap; }
+
+  ol.steps { margin: 0; padding-left: 22px; } ol.steps li { margin-bottom: 6px; }
+  code { font: 14px ui-monospace, SFMono-Regular, Consolas, monospace; background: var(--surface); border: 1px solid var(--line); padding: 1px 6px; border-radius: 6px; word-break: break-all; }
+  footer { padding: 30px 0 46px; color: var(--muted); font-size: 14.5px; border-top: 1px solid var(--line); }
+  @media (max-width: 560px) { header.top nav { display: none; } section h2 { font-size: 23px; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <img src="/favicon.svg" alt="">
+    <span class="name">Автономія</span>
+    <nav>
+      <a href="#inside">Що всередині</a>
+      <a href="#install">Встановлення</a>
+      <a href="#honest">Чесно про стан</a>
+      <a href="https://github.com/louraider/UAutonomy">GitHub</a>
+    </nav>
+  </header>
+
+  <div class="hero">
+    <div class="stripe"></div>
+    <h1>Знання, які працюють<br>без інтернету і світла</h1>
+    <p class="lead">«Автономія» — безкоштовна офлайн-бібліотека для українців: що робити при кровотечі чи обстрілі, карти вашої області, енциклопедії та ШІ-помічник українською. Усе зберігається на телефоні чи комп'ютері.</p>
+
+    <div class="downloads">
+      <a class="dl primary" id="dl-android" href="/android">
+        <strong>Завантажити для Android</strong>
+        <span id="size-android">APK-файл</span>
+      </a>
+      <a class="dl" id="dl-windows" href="/windows">
+        <strong>Завантажити для Windows</strong>
+        <span id="size-windows">ZIP-архів, 64-біт</span>
+      </a>
+    </div>
+    <p class="release-note" id="release-note">Тестова версія. iPhone поки що не підтримується (див. нижче).</p>
+  </div>
+
+  <section id="inside">
+    <h2>Що всередині</h2>
+    <div class="grid">
+      <div class="card">
+        <h3>Картки «що робити зараз»</h3>
+        <p>Кровотеча, опіки, повітряна тривога, мінна небезпека, блекаут, вода, тепло. Доступні одразу після встановлення, нічого не треба докачувати. Медичні картки складено за Наказом МОЗ №441 з дослівними цитатами.</p>
+        <span class="tag">Ще не перевірено лікарем і сапером</span>
+      </div>
+      <div class="card">
+        <h3>Офлайн-карти України</h3>
+        <p>Усі області, Київ і Крим на основі OpenStreetMap. Завантажте свій регіон заздалегідь, і карта працюватиме без мережі.</p>
+      </div>
+      <div class="card">
+        <h3>Енциклопедії</h3>
+        <p>Українська Вікіпедія (стисла, повна без зображень, найпопулярніше), розділ «Медицина» та медична енциклопедія WikiProject Medicine (англ.).</p>
+      </div>
+      <div class="card">
+        <h3>ШІ-помічник на пристрої</h3>
+        <p>Локальна модель Gemma 4 відповідає українською просто на телефоні чи ПК, спираючись на бібліотеку, і показує джерело. Медичні питання скеровує до карток.</p>
+        <span class="tag">ШІ може помилятися</span>
+      </div>
+      <div class="card">
+        <h3>Обмін без інтернету</h3>
+        <p>Застосунок і пакети можна передати з пристрою на пристрій через локальний Wi-Fi: другий телефон заходить за QR-кодом.</p>
+      </div>
+      <div class="card">
+        <h3>Пакети з підписом</h3>
+        <p>Кожен пакет і каталог підписано ключем проєкту. Підмінений файл застосунок не прийме, навіть якщо його передали з сусіднього телефона чи флешки.</p>
+      </div>
+    </div>
+  </section>
+
+  <section id="install">
+    <h2>Як встановити</h2>
+    <div class="grid">
+      <div class="card">
+        <h3>Android</h3>
+        <ol class="steps">
+          <li>Завантажте <a href="/android">APK-файл</a>.</li>
+          <li>Відкрийте його і дозвольте встановлення з цього джерела, якщо телефон запитає.</li>
+          <li>Відкрийте «Автономію» і, поки є інтернет, завантажте карту свого регіону у вкладці «Пакети».</li>
+        </ol>
+      </div>
+      <div class="card">
+        <h3>Windows 10 і 11</h3>
+        <ol class="steps">
+          <li>Завантажте <a href="/windows">ZIP-архів</a> і розпакуйте його.</li>
+          <li>Запустіть <code>Avtonomiia\uautonomy.exe</code>.</li>
+          <li>Збірка поки без цифрового підпису, тож Windows може показати попередження. Натисніть «Докладніше», потім «Однаково запустити».</li>
+        </ol>
+      </div>
+      <div class="card">
+        <h3>iPhone</h3>
+        <p>Застосунку для iPhone ще немає, він у планах. Уже зараз можна відкрити карти в браузері iPhone, якщо поруч є телефон чи ПК з «Автономією» в тій самій мережі Wi-Fi: увімкніть «Обмін» і відскануйте QR-код.</p>
+      </div>
+    </div>
+    <p class="release-note">Перевірити файли: <a href="/sha256">контрольні суми SHA-256</a>. Усі збірки: <a href="https://github.com/louraider/UAutonomy/releases">сторінка релізів</a>.</p>
+  </section>
+
+  <section id="honest">
+    <h2>Чесно про стан проєкту</h2>
+    <div class="warn">
+      <p><strong>Це рання тестова версія.</strong> Можуть бути помилки, а вміст ще доповнюється.</p>
+      <p>Медичні картки звірено з текстом Наказу МОЗ №441, але <strong>жодну ще не перевірив лікар</strong>, і застосунок це прямо показує. Картки з мінної безпеки так само ще чекають на перевірку сапером і мають відповідну позначку.</p>
+      <p>Застосунок не замінює лікаря, рятувальників чи офіційні сповіщення. У разі небезпеки телефонуйте <span class="sos">112</span>, <span class="sos">101</span> (ДСНС), <span class="sos">103</span> (швидка).</p>
+    </div>
+  </section>
+
+  <section id="open">
+    <h2>Відкритий код</h2>
+    <p>Код відкритий під ліцензією Apache-2.0, щоб будь-хто міг перевірити, що застосунок робить, і зібрати його сам. Тексти, карти й моделі мають власні ліцензії (OpenStreetMap ODbL, Вікіпедія CC BY-SA, Gemma). Подробиці на <a href="https://github.com/louraider/UAutonomy">GitHub</a>.</p>
+    <p class="release-note">Для розробників: підписаний каталог пакетів доступний за сталою адресою <code>https://uautonomy.app/catalog.json</code>.</p>
+  </section>
+
+  <footer>
+    «Автономія» · безкоштовно, без реклами й без збору даних · <a href="https://github.com/louraider/UAutonomy/issues">Повідомити про помилку</a>
+  </footer>
+</div>
+
+<script>
+(function () {
+  var note = document.getElementById('release-note');
+  function mb(bytes) { return (bytes / 1048576).toFixed(0) + ' МБ'; }
+  fetch('https://api.github.com/repos/louraider/UAutonomy/releases/tags/app', { headers: { Accept: 'application/vnd.github+json' } })
+    .then(function (r) {
+      if (r.status === 404) { throw new Error('none'); }
+      if (!r.ok) { throw new Error('skip'); }
+      return r.json();
+    })
+    .then(function (rel) {
+      (rel.assets || []).forEach(function (a) {
+        if (a.name === 'avtonomiia.apk') document.getElementById('size-android').textContent = 'APK-файл, ' + mb(a.size);
+        if (a.name === 'avtonomiia-windows-x64.zip') document.getElementById('size-windows').textContent = 'ZIP-архів, 64-біт, ' + mb(a.size);
+      });
+      var d = new Date(rel.published_at || rel.created_at);
+      note.textContent = 'Тестова версія від ' + d.toLocaleDateString('uk-UA', { day: 'numeric', month: 'long', year: 'numeric' }) + '. iPhone поки що не підтримується (див. нижче).';
+    })
+    .catch(function (e) {
+      if (e.message !== 'none') return;
+      ['dl-android', 'dl-windows'].forEach(function (id) { document.getElementById(id).setAttribute('aria-disabled', 'true'); });
+      note.textContent = 'Перша публічна збірка ще готується і з’явиться тут найближчим часом.';
+    });
+})();
+</script>
+</body>
+</html>
