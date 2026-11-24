@@ -202,6 +202,9 @@ jobs:
           cache: true
       - run: flutter pub get
       - run: flutter build windows --release
+      - name: Модулі llama.cpp у збірці (чи є Vulkan)
+        shell: pwsh
+        run: Get-ChildItem build/windows/x64/runner/Release -Recurse -Include *.dll | Select-Object Name, Length | Format-Table -AutoSize
       - uses: actions/upload-artifact@v4
         with:
           name: uautonomy-windows

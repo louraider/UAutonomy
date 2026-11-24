@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:llamadart/llamadart.dart';
 import 'package:uautonomy/src/rust/api/ai.dart';
@@ -50,10 +51,7 @@ class AiService {
     if (_model?.path == m.path && _engine != null) return;
     await unload();
     final sw = Stopwatch()..start();
-    final engine = await LlamaEngine.load(
-      LlamaModel(ModelSource.path(m.path)),
-      params: ModelParams(contextSize: m.contextSize),
-    );
+    final engine = await _loadEngine(m);
     // llama.cpp створює рушій (і компілює шейдери Vulkan) лише на першій
     // генерації: без прогріву перша відповідь чекала ~24 с. Прогріваємо тут,
     // поки користувач бачить індикатор завантаження моделі.
@@ -81,6 +79,38 @@ class AiService {
     _engine = engine;
     _model = m;
     lastLoadTime = sw.elapsed;
+  }
+
+  /// Чому не вдалося запустити модель на відеокарті (для діагностики).
+  String? gpuError;
+
+  /// На ПК спершу вимагаємо відеокарту (Vulkan): з `ComputeDevice.auto`
+  /// llamadart тихо падав на процесор. Якщо GPU немає чи модуль не
+  /// завантажився, запускаємо як раніше і запам'ятовуємо причину.
+  /// Потоки задаємо явно: за замовчуванням llamadart бере лише 4, тож на
+  /// 16-ядерному ПК модель працювала в кілька разів повільніше за llama.cpp.
+  Future<LlamaEngine> _loadEngine(LocalModel m) async {
+    final desktop = Platform.isWindows || Platform.isLinux || Platform.isMacOS;
+    final cores = Platform.numberOfProcessors;
+    // Логічні ядра ≈ 2 × фізичні; генерації вистачає фізичних.
+    final threads = desktop ? (cores ~/ 2).clamp(4, 16) : 0;
+    final batchThreads = desktop ? cores.clamp(4, 32) : 0;
+    ModelParams params(ComputeDevice device) => ModelParams(
+      contextSize: m.contextSize,
+      device: device,
+      numberOfThreads: threads,
+      numberOfThreadsBatch: batchThreads,
+    );
+    final model = LlamaModel(ModelSource.path(m.path));
+    gpuError = null;
+    if (desktop && !Platform.isMacOS) {
+      try {
+        return await LlamaEngine.load(model, params: params(ComputeDevice.gpu));
+      } catch (e) {
+        gpuError = '$e';
+      }
+    }
+    return LlamaEngine.load(model, params: params(ComputeDevice.auto));
   }
 
   /// Де працює модель (для діагностики): назва бекенда llama.cpp

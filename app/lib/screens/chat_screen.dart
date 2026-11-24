@@ -100,6 +100,8 @@ class _ChatScreenState extends State<ChatScreen> {
           layers == null || layers <= 0
               ? 'працює на: $backend (процесор)'
               : 'працює на: $backend, $layers шарів на відеокарті',
+        if (_ai.gpuError != null)
+          'відеокарта недоступна: ${_ai.gpuError!.length > 160 ? '${_ai.gpuError!.substring(0, 160)}…' : _ai.gpuError}',
       ].join(' · ');
     } catch (e) {
       if (mounted) showError(context, 'Не вдалося запустити модель: $e');
