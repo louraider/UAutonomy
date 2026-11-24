@@ -43,8 +43,11 @@ class _PacksScreenState extends State<PacksScreen> {
   HardwareView? _hw;
   RecommendationView? _rec;
   String? _busyId;
-  double? _progress;
+  ProgressView? _progress;
   bool _fetching = false;
+
+  /// Що відомо про підпис останнього відкритого каталогу.
+  String? _catalogTrust;
 
   @override
   void initState() {
@@ -66,8 +69,20 @@ class _PacksScreenState extends State<PacksScreen> {
 
   void _refresh() => setState(() => _installed = installedPacks());
 
+  /// Рекомендація залежить від вільного місця і від того, які моделі є в
+  /// каталозі, тож оновлюємо її після відкриття каталогу й змін пакетів.
+  void _refreshRecommendation() {
+    recommendation().then((r) {
+      if (mounted) setState(() => _rec = r);
+    });
+    hardwareInfo().then((h) {
+      if (mounted) setState(() => _hw = h);
+    });
+  }
+
   void _changed() {
     _refresh();
+    _refreshRecommendation();
     widget.onChanged();
   }
 
@@ -76,7 +91,17 @@ class _PacksScreenState extends State<PacksScreen> {
     setState(() => _fetching = true);
     try {
       final c = await fetchCatalog(url: _url.text);
-      setState(() => _catalog = c);
+      // Каталог за https ядро приймає лише з дійсним підписом проєкту
+      // (catalog.json.sig); з іншого пристрою підпис перевіряється в кожного
+      // пакета під час встановлення.
+      final https = _url.text.trim().toLowerCase().startsWith('https://');
+      setState(() {
+        _catalog = c;
+        _catalogTrust = https
+            ? 'Підпис каталогу перевірено: його підписано ключем проєкту.'
+            : 'Каталог з іншого пристрою. Кожен пакет перевіряється за підписом проєкту перед встановленням.';
+      });
+      _refreshRecommendation();
     } catch (e) {
       if (mounted) showError(context, 'Не вдалося відкрити каталог: $e');
     } finally {
@@ -96,9 +121,7 @@ class _PacksScreenState extends State<PacksScreen> {
     try {
       await for (final p in stream) {
         if (!mounted) return;
-        setState(
-          () => _progress = p.total == BigInt.zero ? null : p.done / p.total,
-        );
+        setState(() => _progress = p);
       }
       if (mounted) {
         ScaffoldMessenger.of(context)
@@ -247,12 +270,28 @@ class _PacksScreenState extends State<PacksScreen> {
     );
   }
 
+  double? get _fraction {
+    final p = _progress;
+    if (p == null || p.total == BigInt.zero) return null;
+    return p.done / p.total;
+  }
+
+  String _progressText() {
+    final p = _progress;
+    if (p == null) return 'Підготовка…';
+    final done = formatBytes(p.done.toInt());
+    if (p.total == BigInt.zero) return 'Завантажено $done';
+    final pct = (p.done / p.total * 100).clamp(0, 100).toStringAsFixed(0);
+    return '$pct% · $done з ${formatBytes(p.total.toInt())}';
+  }
+
   Widget _packTile(PackView p, {required bool fromCatalog}) {
     final busy = _busyId == p.id;
     final recommendedModel = _rec?.modelId;
     final isRecommended =
         p.kind == 'model' && p.modelId != null && p.modelId == recommendedModel;
     return ListTile(
+      isThreeLine: busy,
       leading: Icon(_kindIcons[p.kind] ?? Icons.inventory_2),
       title: Text(p.title),
       subtitle: Column(
@@ -267,7 +306,13 @@ class _PacksScreenState extends State<PacksScreen> {
             ].join(' · '),
           ),
           if (p.description.isNotEmpty) Text(p.description),
-          if (busy) LinearProgressIndicator(value: _progress),
+          if (busy) ...[
+            const SizedBox(height: 8),
+            LinearProgressIndicator(value: _fraction),
+            const SizedBox(height: 4),
+            Text(_progressText(), style: Theme.of(context).textTheme.bodySmall),
+            const SizedBox(height: 4),
+          ],
         ],
       ),
       trailing: fromCatalog
@@ -316,7 +361,16 @@ class _PacksScreenState extends State<PacksScreen> {
         if (_installed.isEmpty)
           const ListTile(title: Text('Лише базовий пакет (термінові картки)')),
         for (final p in _installed) _packTile(p, fromCatalog: false),
-        if (_busyId == 'import') const LinearProgressIndicator(),
+        if (_busyId == 'import') ...[
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: LinearProgressIndicator(value: _fraction),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
+            child: Text(_progressText()),
+          ),
+        ],
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           child: Wrap(
@@ -329,12 +383,11 @@ class _PacksScreenState extends State<PacksScreen> {
                 label: const Text('З флешки чи файлу'),
               ),
               if (!Platform.isAndroid)
-                if (!Platform.isAndroid)
-                  OutlinedButton.icon(
-                    onPressed: _busyId != null ? null : _importFolder,
-                    icon: const Icon(Icons.folder_open),
-                    label: const Text('З теки'),
-                  ),
+                OutlinedButton.icon(
+                  onPressed: _busyId != null ? null : _importFolder,
+                  icon: const Icon(Icons.folder_open),
+                  label: const Text('З теки'),
+                ),
             ],
           ),
         ),
@@ -377,6 +430,11 @@ class _PacksScreenState extends State<PacksScreen> {
             'Перерване завантаження продовжиться з місця зупинки.',
           ),
         ),
+        if (_catalogTrust != null && _catalog.isNotEmpty)
+          ListTile(
+            leading: const Icon(Icons.verified_user),
+            title: Text(_catalogTrust!),
+          ),
         for (final p in _catalog) _packTile(p, fromCatalog: true),
         const SizedBox(height: 24),
       ],

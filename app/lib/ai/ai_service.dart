@@ -50,13 +50,43 @@ class AiService {
     if (_model?.path == m.path && _engine != null) return;
     await unload();
     final sw = Stopwatch()..start();
-    _engine = await LlamaEngine.load(
+    final engine = await LlamaEngine.load(
       LlamaModel(ModelSource.path(m.path)),
       params: ModelParams(contextSize: m.contextSize),
     );
+    // llama.cpp створює рушій (і компілює шейдери Vulkan) лише на першій
+    // генерації: без прогріву перша відповідь чекала ~24 с. Прогріваємо тут,
+    // поки користувач бачить індикатор завантаження моделі.
+    try {
+      await engine
+          .create(
+            [
+              LlamaChatMessage.fromText(
+                role: LlamaChatRole.user,
+                text: 'Привіт',
+              ),
+            ],
+            params: const GenerationParams(maxTokens: 1),
+            enableThinking: false,
+          )
+          .drain<void>();
+    } catch (_) {}
+    try {
+      backendName = await engine.getBackendName();
+      gpuLayers = await engine.getResolvedGpuLayers();
+    } catch (_) {
+      backendName = null;
+      gpuLayers = null;
+    }
+    _engine = engine;
     _model = m;
     lastLoadTime = sw.elapsed;
   }
+
+  /// Де працює модель (для діагностики): назва бекенда llama.cpp
+  /// (Vulkan, CUDA, Metal, CPU) і скільки шарів винесено на відеокарту.
+  String? backendName;
+  int? gpuLayers;
 
   Future<void> unload() async {
     await stop();

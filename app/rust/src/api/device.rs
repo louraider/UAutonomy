@@ -67,9 +67,48 @@ pub fn hardware_info() -> HardwareView {
     }
 }
 
+/// Моделі, які справді можна поставити: вже встановлені або є в останньому
+/// відкритому каталозі. Поки каталог не відкрито й моделей немає — `None`
+/// (тоді рекомендуємо з усього вбудованого переліку).
+fn available_model_ids() -> Option<Vec<String>> {
+    let a = state::app_ref().ok()?;
+    let mut ids: Vec<String> = a
+        .shared
+        .read()
+        .unwrap()
+        .store
+        .installed()
+        .into_iter()
+        .filter(|m| m.kind == PackKind::Model)
+        .filter_map(|m| m.model_id)
+        .collect();
+    let catalog_open = match a.catalog.lock().unwrap().as_ref() {
+        Some(c) => {
+            ids.extend(
+                c.packs
+                    .iter()
+                    .filter(|p| p.kind == PackKind::Model)
+                    .filter_map(|p| p.model_id.clone()),
+            );
+            true
+        }
+        None => false,
+    };
+    (catalog_open || !ids.is_empty()).then_some(ids)
+}
+
 pub fn recommendation() -> RecommendationView {
     let h = hardware::detect(&data_dir());
-    let r = hardware::recommend(&h, &models::default_catalog());
+    let mut catalog = models::default_catalog();
+    // Не радимо модель, якої немає в каталозі (раніше на ПК з 64 ГБ радило
+    // Gemma 4 26B, хоча в каталозі була лише E2B).
+    if let Some(ids) = available_model_ids() {
+        catalog.retain(|m| ids.contains(&m.id));
+    }
+    let mut r = hardware::recommend(&h, &catalog);
+    if catalog.is_empty() {
+        r.reason = "У відкритому каталозі поки немає моделей ШІ. Бібліотека, пошук і карти працюють повністю.".into();
+    }
     RecommendationView {
         model_id: r.model_id,
         ai_by_default: r.ai_by_default,

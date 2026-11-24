@@ -2,7 +2,9 @@
 """Збирає вшитий базовий пакет із теки content/.
 
 Читає content/cards/*.json (масиви карток) і content/articles/**/*.md
-та пише core/crates/uautonomy-core/assets/base/{cards,articles}.json.
+та пише core/crates/uautonomy-core/assets/base/{cards,articles,sources}.json.
+sources.json — короткі назви джерел за id: застосунок показує їх замість
+внутрішніх ідентифікаторів (`moz-441` → «Наказ МОЗ № 441 (2022)»).
 Ядро вбудовує ці файли в застосунок і хаб (include_str!).
 
     python3 tools/build_base_pack.py [--content content] [--check]
@@ -49,6 +51,9 @@ def main() -> int:
         if aid in ids:
             errors.append(f"{f}: id {aid} уже зайнятий карткою")
         articles.append([aid, f.read_text(encoding="utf-8")])
+    sources = {}
+    for s in json.loads((content / "sources.json").read_text(encoding="utf-8")):
+        sources[s["id"]] = s.get("short") or s["title"]
     if errors:
         print("\n".join(errors), file=sys.stderr)
         return 1
@@ -60,6 +65,7 @@ def main() -> int:
         OUT.mkdir(parents=True, exist_ok=True)
         (OUT / "cards.json").write_text(json.dumps(cards, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
         (OUT / "articles.json").write_text(json.dumps(articles, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
+        (OUT / "sources.json").write_text(json.dumps(sources, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
     return 0
 
 

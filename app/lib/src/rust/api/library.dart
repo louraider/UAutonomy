@@ -7,7 +7,7 @@ import '../frb_generated.dart';
 
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
-// These functions are ignored because they are not marked as `pub`: `library_info_inner`
+// These functions are ignored because they are not marked as `pub`: `drop_title_heading`, `library_info_inner`, `medical_zim`
 // These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `from`
 
 String coreVersion() => RustLib.instance.api.crateApiLibraryCoreVersion();
@@ -124,10 +124,14 @@ class DocView {
   final String key;
   final String title;
 
-  /// Простий текст (Markdown для статей, очищений HTML для ZIM).
+  /// Markdown: заголовки, списки, таблиці, **жирний**, посилання
+  /// `[текст](card:<id>)` і `[текст](zim:<пакет>/<шлях>)`.
   final String body;
   final String source;
   final bool reviewed;
+
+  /// Хто має перевірити: `medic` (медичні статті й енциклопедії), `deminer`.
+  final String? reviewRequired;
 
   const DocView({
     required this.key,
@@ -135,6 +139,7 @@ class DocView {
     required this.body,
     required this.source,
     required this.reviewed,
+    this.reviewRequired,
   });
 
   @override
@@ -143,7 +148,8 @@ class DocView {
       title.hashCode ^
       body.hashCode ^
       source.hashCode ^
-      reviewed.hashCode;
+      reviewed.hashCode ^
+      reviewRequired.hashCode;
 
   @override
   bool operator ==(Object other) =>
@@ -154,7 +160,8 @@ class DocView {
           title == other.title &&
           body == other.body &&
           source == other.source &&
-          reviewed == other.reviewed;
+          reviewed == other.reviewed &&
+          reviewRequired == other.reviewRequired;
 }
 
 class HitView {

@@ -1075,14 +1075,15 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   DocView dco_decode_doc_view(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     final arr = raw as List<dynamic>;
-    if (arr.length != 5)
-      throw Exception('unexpected arr length: expect 5 but see ${arr.length}');
+    if (arr.length != 6)
+      throw Exception('unexpected arr length: expect 6 but see ${arr.length}');
     return DocView(
       key: dco_decode_String(arr[0]),
       title: dco_decode_String(arr[1]),
       body: dco_decode_String(arr[2]),
       source: dco_decode_String(arr[3]),
       reviewed: dco_decode_bool(arr[4]),
+      reviewRequired: dco_decode_opt_String(arr[5]),
     );
   }
 
@@ -1530,12 +1531,14 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     var var_body = sse_decode_String(deserializer);
     var var_source = sse_decode_String(deserializer);
     var var_reviewed = sse_decode_bool(deserializer);
+    var var_reviewRequired = sse_decode_opt_String(deserializer);
     return DocView(
       key: var_key,
       title: var_title,
       body: var_body,
       source: var_source,
       reviewed: var_reviewed,
+      reviewRequired: var_reviewRequired,
     );
   }
 
@@ -2090,6 +2093,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     sse_encode_String(self.body, serializer);
     sse_encode_String(self.source, serializer);
     sse_encode_bool(self.reviewed, serializer);
+    sse_encode_opt_String(self.reviewRequired, serializer);
   }
 
   @protected
