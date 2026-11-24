@@ -64,7 +64,17 @@ pub fn installed_packs() -> Vec<PackView> {
         return Vec::new();
     };
     let s = a.shared.read().unwrap();
-    s.store.installed().iter().map(|m| view(m, true)).collect()
+    let mut out: Vec<PackView> = s.store.installed().iter().map(|m| view(m, true)).collect();
+    // Пакети без дійсного підпису (наприклад, із тестових збірок) не
+    // читаються й не роздаються; показуємо їх, щоб людина могла видалити.
+    for m in s.store.untrusted() {
+        let mut v = view(&m, true);
+        v.title = format!("⚠ {} — не підписаний, не використовується", m.title);
+        v.description =
+            "Пакет не має дійсного підпису проєкту. Видаліть його й завантажте знову з офіційного каталогу.".into();
+        out.push(v);
+    }
+    out
 }
 
 /// Каталог з інтернету, хаба чи іншого телефона. Приймає адресу
@@ -82,8 +92,9 @@ pub fn fetch_catalog(url: String) -> anyhow::Result<Vec<PackView>> {
     } else {
         format!("http://{url}")
     };
-    let cat = download::fetch_catalog(&url)?;
-    let installed = a.shared.read().unwrap().store.installed();
+    let store = a.shared.read().unwrap().store.clone();
+    let cat = download::fetch_catalog_checked(&url, store.trust())?;
+    let installed = store.installed();
     let out = cat
         .packs
         .iter()

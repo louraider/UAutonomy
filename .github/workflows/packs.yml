@@ -127,11 +127,27 @@ jobs:
           if gh release download "$TAG" -p catalog.json -O out/previous.json 2>/dev/null; then
             merge+=(--merge out/previous.json)
           fi
-          core/target/release/uautonomy-hub catalog out/packs --release-url "$BASE" --stage out/stage "${merge[@]}"
+          # Кожен пакет і сам каталог підписуються ключем проєкту з секрету
+          # PACK_SIGNING_KEY (docs/signing.md). Без підпису застосунок пакети
+          # не встановить, тож публікація без ключа заборонена.
+          sign=()
+          if [ -n "${PACK_SIGNING_KEY:-}" ]; then
+            sign=(--sign-key-env PACK_SIGNING_KEY)
+          elif [ "$PUBLISH" = "true" ]; then
+            echo "::error::Секрет PACK_SIGNING_KEY не задано: публікувати непідписані пакети не можна"; exit 1
+          else
+            echo "::warning::PACK_SIGNING_KEY не задано: каталог без підпису (лише перевірка)"
+          fi
+          core/target/release/uautonomy-hub catalog out/packs --release-url "$BASE" --stage out/stage "${merge[@]}" "${sign[@]}"
           cp out/packs/catalog.json out/stage/catalog.json
+          if [ -f out/packs/catalog.json.sig ]; then
+            cp out/packs/catalog.json.sig out/stage/catalog.json.sig
+            UAUTONOMY_TRUSTED_KEYS="" core/target/release/uautonomy-hub verify out/stage/catalog.json
+          fi
           ls -la out/stage
         env:
           GH_TOKEN: ${{ github.token }}
+          PACK_SIGNING_KEY: ${{ secrets.PACK_SIGNING_KEY }}
       - name: Опублікувати у випуск packs
         if: env.PUBLISH == 'true'
         env:
