@@ -55,7 +55,8 @@ pub fn region_at(lat: f64, lon: f64) -> Option<String> {
 pub struct MapHeader {
     pub min_zoom: u8,
     pub max_zoom: u8,
-    /// [захід, південь, схід, північ]
+    /// [захід, південь, схід, північ]; порожньо, якщо файл їх не містить
+    /// (tilemaker) — тоді беріть межі області.
     pub bounds: Vec<f64>,
     pub center_lat: f64,
     pub center_lon: f64,
@@ -81,7 +82,11 @@ pub fn map_header(path: String) -> anyhow::Result<MapHeader> {
     Ok(MapHeader {
         min_zoom: h.min_zoom,
         max_zoom: h.max_zoom,
-        bounds: h.bounds.to_vec(),
+        bounds: if h.has_bounds() {
+            h.bounds.to_vec()
+        } else {
+            Vec::new()
+        },
         center_lat: h.center.0,
         center_lon: h.center.1,
         vector: h.tile_type == uautonomy_core::pmtiles::TileType::Mvt,

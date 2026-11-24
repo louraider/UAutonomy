@@ -69,6 +69,13 @@ struct DirEntry {
     run_length: u32,
 }
 
+impl Header {
+    /// Чи записані межі. tilemaker лишає нулі, тоді межі беруть з області.
+    pub fn has_bounds(&self) -> bool {
+        self.bounds[2] > self.bounds[0] && self.bounds[3] > self.bounds[1]
+    }
+}
+
 pub struct PmTiles {
     file: Mutex<File>,
     pub header: Header,

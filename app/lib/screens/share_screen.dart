@@ -28,7 +28,11 @@ class _ShareScreenState extends State<ShareScreen> {
       if (apk == null) return const [];
       // Віддаємо під зрозумілою назвою.
       final dest = File('${Directory.systemTemp.path}/avtonomiia.apk');
-      await File(apk).copy(dest.path);
+      final src = File(apk);
+      // Копіюємо лише раз: APK важить десятки мегабайтів.
+      if (!dest.existsSync() || dest.lengthSync() != src.lengthSync()) {
+        await src.copy(dest.path);
+      }
       return [dest.path];
     } catch (_) {
       return const [];
@@ -67,7 +71,8 @@ class _ShareScreenState extends State<ShareScreen> {
           '1. Увімкніть точку доступу на цьому телефоні або підключіться до спільного Wi-Fi.\n'
           '2. Натисніть «Увімкнути обмін».\n'
           '3. Інший телефон сканує QR-код камерою й відкриває бібліотеку в браузері, '
-          'може завантажити застосунок і пакети.',
+          'може завантажити застосунок і пакети. На iPhone і ноутбуках у браузері '
+          'працюють пошук, картки й офлайн-карти завантажених областей.',
         ),
         const SizedBox(height: 16),
         FilledButton.icon(

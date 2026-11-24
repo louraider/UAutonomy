@@ -1,0 +1,12 @@
+[
+  {"id": "zim-wikipedia-uk-medicine", "dir": "wikipedia", "prefix": "wikipedia_uk_medicine_maxi",
+   "title": "Вікіпедія: медицина", "tier": "pocket", "license": "CC-BY-SA-4.0"},
+  {"id": "zim-wikipedia-uk-top", "dir": "wikipedia", "prefix": "wikipedia_uk_top_maxi",
+   "title": "Вікіпедія: найпопулярніші статті", "tier": "pocket", "license": "CC-BY-SA-4.0"},
+  {"id": "zim-wikipedia-uk-mini", "dir": "wikipedia", "prefix": "wikipedia_uk_all_mini",
+   "title": "Вікіпедія українською (стислі статті)", "tier": "family", "license": "CC-BY-SA-4.0"},
+  {"id": "zim-wikipedia-uk-nopic", "dir": "wikipedia", "prefix": "wikipedia_uk_all_nopic",
+   "title": "Вікіпедія українською (повні статті без зображень)", "tier": "community", "license": "CC-BY-SA-4.0"},
+  {"id": "zim-mdwiki-en", "dir": "other", "prefix": "mdwiki_en_all_maxi",
+   "title": "WikiProject Medicine: медична енциклопедія (англ.)", "tier": "family", "license": "CC-BY-SA-4.0"}
+]

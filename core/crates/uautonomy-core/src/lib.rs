@@ -14,6 +14,7 @@
 //! | [`rag`] | запит до локальної моделі з джерелами |
 //! | [`regions`] | області для офлайн-карт |
 //! | [`share`] | Wi-Fi-сервер для інших телефонів і хаба |
+//! | [`webmap`] | карти в браузері через Wi-Fi-обмін (iPhone, ноутбук) |
 
 pub mod card;
 pub mod content;
@@ -28,6 +29,7 @@ pub mod search;
 pub mod share;
 pub mod store;
 pub mod text;
+pub mod webmap;
 pub mod zim;
 
 pub use card::{Article, Card, Category};

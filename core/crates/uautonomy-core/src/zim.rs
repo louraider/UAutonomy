@@ -77,6 +77,18 @@ pub struct Zim {
     mimes: Vec<String>,
     /// Останній розпакований кластер (номер, дані, розмір зміщень).
     cache: Mutex<Option<CachedCluster>>,
+    /// Покажчики за заголовком, завантажені при першому пошуку.
+    titles: std::sync::OnceLock<TitleIndex>,
+}
+
+/// Звідки брати порядок за заголовком.
+#[derive(Debug)]
+enum TitleIndex {
+    /// `X/listing/titleOrdered/v1`: лише статті, у пам'яті (новий формат).
+    Listing(Vec<u32>),
+    /// Список із заголовка файлу (старий формат і libzim до 9).
+    Header(u32),
+    None,
 }
 
 impl std::fmt::Debug for Zim {
@@ -131,6 +143,7 @@ impl Zim {
             header,
             mimes,
             cache: Mutex::new(None),
+            titles: std::sync::OnceLock::new(),
         })
     }
 
@@ -173,7 +186,70 @@ impl Zim {
         Ok(u64::from_le_bytes(b))
     }
 
+    /// Новіші libzim не пишуть список заголовків у шапку файлу (або пишуть
+    /// повний, з картинками), а кладуть упорядкований перелік статей у
+    /// `X/listing/titleOrdered/v1`. Беремо його, а шапку лише як запасний шлях.
+    fn title_index(&self) -> &TitleIndex {
+        self.titles.get_or_init(|| {
+            let n = self.header.entry_count;
+            let len = self
+                .file
+                .lock()
+                .unwrap()
+                .metadata()
+                .map(|m| m.len())
+                .unwrap_or(0);
+            let end = self.header.title_ptr_pos.checked_add(n as u64 * 4);
+            let header_ok = self.header.title_ptr_pos >= 80 && end.is_some_and(|e| e <= len);
+            let listing: Vec<u32> = self
+                .get_by_path('X', "listing/titleOrdered/v1")
+                .and_then(|e| self.content(&e).ok())
+                .map(|(_, b)| {
+                    b.as_chunks::<4>()
+                        .0
+                        .iter()
+                        .map(|c| u32::from_le_bytes(*c))
+                        .filter(|i| *i < n)
+                        .collect()
+                })
+                .unwrap_or_default();
+            // Деякі архіви (zimgit) позначають статтею лише головну сторінку:
+            // тоді повний список із шапки корисніший.
+            let tiny = (listing.len() as u64) * 20 < n as u64;
+            if !listing.is_empty() && !(tiny && header_ok) {
+                TitleIndex::Listing(listing)
+            } else if header_ok {
+                TitleIndex::Header(n)
+            } else {
+                TitleIndex::None
+            }
+        })
+    }
+
+    /// Опис джерела порядку заголовків (для діагностики).
+    pub fn title_index_info(&self) -> String {
+        match self.title_index() {
+            TitleIndex::Listing(v) => format!("titleOrdered/v1, {} статей", v.len()),
+            TitleIndex::Header(n) => format!("шапка файлу, {n} записів"),
+            TitleIndex::None => "немає".into(),
+        }
+    }
+
+    fn title_len(&self) -> u32 {
+        match self.title_index() {
+            TitleIndex::Listing(v) => v.len() as u32,
+            TitleIndex::Header(n) => *n,
+            TitleIndex::None => 0,
+        }
+    }
+
     fn title_ptr(&self, idx: u32) -> Result<u32> {
+        if let TitleIndex::Listing(v) = self.title_index() {
+            return v
+                .get(idx as usize)
+                .copied()
+                .ok_or(ZimError::Corrupt("номер у переліку заголовків"));
+        }
         let mut b = [0u8; 4];
         self.read_at(self.header.title_ptr_pos + idx as u64 * 4, &mut b)?;
         Ok(u32::from_le_bytes(b))
@@ -248,7 +324,7 @@ impl Zim {
     /// Статті, заголовок яких починається з `prefix` (з урахуванням регістру,
     /// як у ZIM). Для пошуку без регістру викликайте з кількома варіантами.
     pub fn find_by_title_prefix(&self, ns: char, prefix: &str, limit: usize) -> Vec<Entry> {
-        let n = self.header.entry_count;
+        let n = self.title_len();
         let (mut lo, mut hi) = (0u32, n);
         while lo < hi {
             let mid = lo + (hi - lo) / 2;
@@ -480,7 +556,38 @@ pub mod writer {
         main_url: Option<&str>,
         out: &mut impl Write,
     ) -> std::io::Result<()> {
+        // Як сучасний libzim: упорядкований перелік статей у X/listing.
+        const LISTING: &str = "listing/titleOrdered/v1";
+        if items.iter().any(|i| i.namespace == 'C') && !items.iter().any(|i| i.url == LISTING) {
+            items.push(Item {
+                namespace: 'X',
+                url: LISTING.into(),
+                title: String::new(),
+                mime: "application/octet-stream+zimlisting".into(),
+                data: Vec::new(),
+            });
+        }
         items.sort_by(|a, b| (a.namespace, &a.url).cmp(&(b.namespace, &b.url)));
+        let mut listing: Vec<u32> = (0..items.len() as u32)
+            .filter(|i| {
+                let it = &items[*i as usize];
+                it.namespace == 'C' && it.mime.starts_with("text/html")
+            })
+            .collect();
+        let title_of = |it: &Item| {
+            if it.title.is_empty() {
+                it.url.clone()
+            } else {
+                it.title.clone()
+            }
+        };
+        listing.sort_by_key(|i| title_of(&items[*i as usize]));
+        if let Some(l) = items
+            .iter_mut()
+            .find(|i| i.namespace == 'X' && i.url == LISTING)
+        {
+            l.data = listing.iter().flat_map(|i| i.to_le_bytes()).collect();
+        }
         let mut mimes: Vec<String> = items.iter().map(|i| i.mime.clone()).collect();
         mimes.sort();
         mimes.dedup();
@@ -543,7 +650,7 @@ pub mod writer {
         let mut by_title: Vec<u32> = (0..n as u32).collect();
         by_title.sort_by(|a, b| {
             let (x, y) = (&items[*a as usize], &items[*b as usize]);
-            (x.namespace, &x.title).cmp(&(y.namespace, &y.title))
+            (x.namespace, title_of(x)).cmp(&(y.namespace, title_of(y)))
         });
         let main = main_url
             .and_then(|u| items.iter().position(|i| i.url == u))
@@ -623,7 +730,7 @@ mod tests {
         drop(f);
 
         let z = Zim::open(&path).unwrap();
-        assert_eq!(z.entry_count(), 4);
+        assert_eq!(z.entry_count(), 5, "4 записи + перелік заголовків");
         assert_eq!(z.content_namespace(), 'C');
         assert_eq!(z.metadata("Title").unwrap(), "Тестовий довідник");
         let e = z.get("C/Вода").unwrap();
@@ -636,6 +743,35 @@ mod tests {
         assert_eq!(found[0].url, "Вода");
         assert_eq!(z.articles().count(), 3);
         assert!(Zim::open(dir.path().join("nope")).is_err());
+    }
+
+    #[test]
+    fn title_search_uses_listing_when_header_has_none() {
+        // Новіші libzim: порожні заголовки (= URL) і перелік у X/listing.
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("n.zim");
+        let mut f = File::create(&path).unwrap();
+        write_zim(
+            vec![
+                item('C', "Кровотеча", "", "text/html", "<p>Тисніть</p>"),
+                item('C', "Вода", "Вода питна", "text/html", "<p>Кип'ятіть</p>"),
+                item('C', "logo.png", "", "image/png", "png"),
+            ],
+            None,
+            &mut f,
+        )
+        .unwrap();
+        drop(f);
+        let mut b = std::fs::read(&path).unwrap();
+        b[40..48].copy_from_slice(&u64::MAX.to_le_bytes());
+        std::fs::write(&path, b).unwrap();
+        let z = Zim::open(&path).unwrap();
+        assert!(z.title_index_info().starts_with("titleOrdered/v1, 2"));
+        let found = z.find_by_title_prefix('C', "Кров", 10);
+        assert_eq!(found.len(), 1);
+        assert_eq!(found[0].title, "Кровотеча");
+        assert_eq!(z.find_by_title_prefix('C', "Вода", 10).len(), 1);
+        assert!(z.find_by_title_prefix('C', "logo", 10).is_empty());
     }
 
     #[test]

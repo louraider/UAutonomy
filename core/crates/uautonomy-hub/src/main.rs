@@ -11,6 +11,7 @@
 //!                       [--release-url https://github.com/.../releases/download/<tag> --stage <тека>]
 //!                       [--merge зовнішні-пакети.json]...   (додає лише відсутні id)
 //! uautonomy-hub regions                            (області для карт, JSON)
+//! uautonomy-hub zim-check <файл.zim> [запит]...      (перевірка читача на справжньому ZIM)
 //!
 //! `--release-url` / `--stage`: для плаского хостингу (GitHub Releases) кожен
 //! файл копіюється в `--stage` під іменем `<id>--<шлях>` і отримує пряму адресу.
@@ -31,6 +32,7 @@ fn main() -> ExitCode {
         Some("pack") => pack(&args[1..]),
         Some("export") => export(&args[1..]),
         Some("catalog") => catalog(&args[1..]),
+        Some("zim-check") => zim_check(&args[1..]),
         Some("regions") => {
             println!(
                 "{}",
@@ -40,7 +42,7 @@ fn main() -> ExitCode {
         }
         _ => {
             eprintln!(
-                "uautonomy-hub {}\nКоманди: serve, install, pack, export, catalog (див. документацію в main.rs)",
+                "uautonomy-hub {}\nКоманди: serve, install, pack, export, catalog, regions, zim-check (див. документацію в main.rs)",
                 uautonomy_core::version()
             );
             return ExitCode::from(2);
@@ -228,5 +230,58 @@ fn catalog(args: &[String]) -> R {
     let out = Path::new(&dir).join("catalog.json");
     std::fs::write(&out, serde_json::to_string_pretty(&c)?)?;
     println!("{}: {} пакетів", out.display(), c.packs.len());
+    Ok(())
+}
+
+/// Відкриває справжній ZIM (наприклад, з Kiwix) нашим читачем: метадані,
+/// головна сторінка, пошук за назвою й уривки для ШІ. Помилка — ненульовий код.
+fn zim_check(args: &[String]) -> R {
+    use uautonomy_core::zim::Zim;
+    let pos = positional(args);
+    let path = pos.first().ok_or("потрібен файл .zim")?;
+    let started = std::time::Instant::now();
+    let zim = Arc::new(Zim::open(path)?);
+    let meta = |k: &str| zim.metadata(k).unwrap_or_default();
+    println!(
+        "{path}: {} записів, простір імен «{}», «{}», мова {}, дата {} ({} мс)",
+        zim.entry_count(),
+        zim.content_namespace(),
+        meta("Title"),
+        meta("Language"),
+        meta("Date"),
+        started.elapsed().as_millis()
+    );
+    let main = zim.main_page().ok_or("немає головної сторінки")?;
+    let main = zim.resolve(&main)?;
+    let (mime, data) = zim.content(&main)?;
+    println!(
+        "порядок заголовків: {}; HTML-статей: {}",
+        zim.title_index_info(),
+        zim.articles().count()
+    );
+    println!("головна: {} ({mime}, {} Б)", main.path(), data.len());
+    if data.is_empty() {
+        return Err("порожня головна сторінка".into());
+    }
+    let mut lib = uautonomy_core::Library::new(Vec::new());
+    lib.add_zim("check", zim.clone());
+    for q in &pos[1..] {
+        let t = std::time::Instant::now();
+        let hits = lib.search(q, 5);
+        let passages = lib.retrieve(q, 3);
+        println!(
+            "«{q}»: {} результатів, {} уривків ({} мс)",
+            hits.len(),
+            passages.len(),
+            t.elapsed().as_millis()
+        );
+        for h in hits.iter().take(3) {
+            println!("  - {}", h.title);
+        }
+        if let Some(p) = passages.first() {
+            let preview: String = p.text.chars().take(160).collect();
+            println!("  уривок: {preview}");
+        }
+    }
     Ok(())
 }

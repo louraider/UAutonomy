@@ -95,6 +95,61 @@ jobs:
           path: app/build/app/outputs/flutter-apk/*.apk
           retention-days: 14
 
+  android-e2e:
+    name: Android-емулятор (наскрізний тест)
+    runs-on: ubuntu-latest
+    needs: [core, flutter-analyze]
+    timeout-minutes: 75
+    steps:
+      - uses: actions/checkout@v4
+      - name: Базовий пакет із content/
+        run: python3 tools/build_base_pack.py
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-linux-android
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: app/rust
+          key: e2e
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+      - run: flutter pub get
+        working-directory: app
+      # Збірка до запуску емулятора: залежності Gradle з повторами, бо
+      # збій мережі під час тесту інакше валить усе.
+      - name: Попередня збірка (Gradle з повторами)
+        working-directory: app
+        run: |
+          for i in 1 2 3; do
+            flutter build apk --debug --target-platform android-x64 -t integration_test/app_test.dart && exit 0
+            echo "::warning::спроба $i не вдалася, повтор"; sleep 30
+          done
+          exit 1
+      - name: KVM для емулятора
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      # Тест офлайн-функцій і, через мережу, завантаження карти Києва
+      # з офіційного каталогу (випуск packs).
+      - uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          arch: x86_64
+          target: google_apis
+          ram-size: 4096M
+          disable-animations: true
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          working-directory: app
+          script: flutter test integration_test/app_test.dart -d emulator-5554 --dart-define=NETWORK_TESTS=true
+
   windows:
     name: Windows
     runs-on: windows-latest
