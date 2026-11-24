@@ -44,6 +44,12 @@ class CardView {
   final bool reviewed;
   final String? reviewRequired;
 
+  /// Дослівний текст офіційного джерела (пункти наказу МОЗ № 441).
+  final String? sourceQuote;
+
+  /// Адреса офіційного тексту.
+  final String? sourceUrl;
+
   const CardView({
     required this.id,
     required this.category,
@@ -54,6 +60,8 @@ class CardView {
     required this.source,
     required this.reviewed,
     this.reviewRequired,
+    this.sourceQuote,
+    this.sourceUrl,
   });
 
   @override
@@ -66,7 +74,9 @@ class CardView {
       warnings.hashCode ^
       source.hashCode ^
       reviewed.hashCode ^
-      reviewRequired.hashCode;
+      reviewRequired.hashCode ^
+      sourceQuote.hashCode ^
+      sourceUrl.hashCode;
 
   @override
   bool operator ==(Object other) =>
@@ -81,7 +91,9 @@ class CardView {
           warnings == other.warnings &&
           source == other.source &&
           reviewed == other.reviewed &&
-          reviewRequired == other.reviewRequired;
+          reviewRequired == other.reviewRequired &&
+          sourceQuote == other.sourceQuote &&
+          sourceUrl == other.sourceUrl;
 }
 
 class CategoryView {

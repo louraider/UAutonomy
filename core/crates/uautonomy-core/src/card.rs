@@ -88,6 +88,13 @@ pub struct Card {
     pub review_required: Option<String>,
     #[serde(default)]
     pub updated: Option<String>,
+    /// Дослівний текст офіційного джерела, напр. пункти наказу МОЗ № 441.
+    /// Застосунок показує його під кроками, щоб людина бачила першоджерело.
+    #[serde(default)]
+    pub source_quote: Option<String>,
+    /// Адреса офіційного тексту, з якого взято `source_quote`.
+    #[serde(default)]
+    pub source_url: Option<String>,
 }
 
 impl Card {
@@ -107,7 +114,19 @@ impl Card {
             source_ref: None,
             review_required: None,
             updated: None,
+            source_quote: None,
+            source_url: None,
         }
+    }
+
+    /// Медична картка: домедична допомога або будь-яка, яку має перевірити медик.
+    pub fn is_medical(&self) -> bool {
+        self.category == Category::FirstAid || self.review_required.as_deref() == Some("medic")
+    }
+
+    /// Картка мінної безпеки (перевіряє сапер).
+    pub fn is_mine_safety(&self) -> bool {
+        self.category == Category::MineSafety || self.review_required.as_deref() == Some("deminer")
     }
 
     /// Увесь текст картки одним рядком (для пошуку й ШІ).

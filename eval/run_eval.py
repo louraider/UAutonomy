@@ -23,6 +23,7 @@
 from __future__ import annotations
 
 import argparse
+import subprocess
 import csv
 import json
 import math
@@ -164,6 +165,55 @@ def eval_retrieval(index: BM25, questions: list[dict], k: int) -> dict:
     return {"n": len(qs), f"recall@{k}": hits / n, "mrr@10": rr / n, "rows": rows}
 
 
+def hub_rows(hub: Path, questions: list[dict]) -> dict:
+    """Маршрут, пошук і промпт з Rust-ядра (`uautonomy-hub rag`), як у застосунку."""
+    inp = "".join(json.dumps({"id": q["id"], "question": q["question"]}, ensure_ascii=False) + "\n"
+                  for q in questions)
+    out = subprocess.run([str(hub), "rag"], input=inp.encode("utf-8"), capture_output=True, check=True)
+    rows = [json.loads(l) for l in out.stdout.decode("utf-8").splitlines() if l.strip()]
+    return {r["id"]: r for r in rows}
+
+
+def hub_found(row: dict) -> list[str]:
+    """Що застосунок показав би першим: картки маршруту, далі джерела пошуку."""
+    ids = list(row["route"].get("card_ids", []))
+    for s in row["sources"]:
+        k = s["key"].split(":", 1)[1] if s["key"].startswith(("card:", "article:")) else s["key"]
+        if k not in ids:
+            ids.append(k)
+    return ids
+
+
+def eval_retrieval_hub(rows: dict, questions: list[dict], k: int) -> dict:
+    out, hits, rr = [], 0, 0.0
+    qs = [q for q in questions if q.get("expected_ids")]
+    for q in qs:
+        found = hub_found(rows[q["id"]])
+        rank = next((i + 1 for i, d in enumerate(found) if d in q["expected_ids"]), None)
+        hit = rank is not None and rank <= k
+        hits += hit
+        rr += 1 / rank if rank else 0
+        out.append({"id": q["id"], "question": q["question"], "expected": q["expected_ids"],
+                    "found": found[:k], "rank": rank, "hit": hit, "route": rows[q["id"]]["route"]["route"]})
+    n = max(1, len(qs))
+    return {"n": len(qs), f"recall@{k}": hits / n, "mrr@10": rr / n, "rows": out}
+
+
+def hub_answer(row: dict) -> str:
+    """Текст, який застосунок показує без моделі (повідомлення і картки)."""
+    parts = [row["route"]["message"]]
+    for c in row["cards"]:
+        parts.append(f"[{c['id']}] {c['title']}\n{c['text']}")
+    return "\n\n".join(parts)
+
+
+def numbers_to_ids(answer: str, row: dict) -> str:
+    """Промпт ядра просить посилання [1], [2]; переводимо їх в id для оцінки."""
+    keys = [s["key"].split(":", 1)[1] for s in row["sources"]]
+    return re.sub(r"\[(\d+)\]", lambda m: f"[{keys[int(m.group(1)) - 1]}]"
+                  if 0 < int(m.group(1)) <= len(keys) else m.group(0), answer)
+
+
 # --------------------------------------------------------------- models -----
 
 def chat(model: dict, messages: list[dict], max_tokens: int, temperature: float, timeout: int) -> tuple[str, dict]:
@@ -251,6 +301,9 @@ def main() -> int:
     ap.add_argument("--pause", action="store_true",
                     help="перед кожною моделлю чекати Enter (зручно, коли llama-server тримає одну модель)")
     ap.add_argument("--out", type=Path, default=ROOT / "eval" / "results")
+    ap.add_argument("--hub", type=Path,
+                    help="шлях до uautonomy-hub: маршрут, пошук і промпт беруться з Rust-ядра, як у застосунку "
+                         "(медичні питання, міни й криза відповідаються картками без моделі)")
     args = ap.parse_args()
 
     docs = load_docs()
@@ -269,9 +322,10 @@ def main() -> int:
     run_dir = args.out / datetime.now().strftime("%Y%m%d-%H%M%S")
     run_dir.mkdir(parents=True, exist_ok=True)
 
-    ret = eval_retrieval(index, questions, args.k)
+    hub = hub_rows(args.hub, questions) if args.hub else None
+    ret = eval_retrieval_hub(hub, questions, args.k) if hub else eval_retrieval(index, questions, args.k)
     (run_dir / "retrieval.json").write_text(json.dumps(ret, ensure_ascii=False, indent=1), encoding="utf-8")
-    print(f"Пошук BM25: {ret['n']} питань, recall@{args.k} = {ret[f'recall@{args.k}']:.2%}, "
+    print(f"Пошук {'ядра (hub)' if hub else 'BM25'}: {ret['n']} питань, recall@{args.k} = {ret[f'recall@{args.k}']:.2%}, "
           f"MRR@10 = {ret['mrr@10']:.3f}")
     misses = [r for r in ret["rows"] if not r["hit"]]
     for r in misses[:10]:
@@ -299,13 +353,26 @@ def main() -> int:
         speed = []
         with out_path.open("w", encoding="utf-8") as f:
             for i, q in enumerate(gen_qs, 1):
-                ctx_ids = [] if args.no_context else [d for d, _ in index.search(q["question"], k=args.k)]
-                msgs = build_messages(q, [by_id[d] for d in ctx_ids])
-                try:
-                    answer, perf = chat(m, msgs, args.max_tokens, args.temperature, args.timeout)
-                except (urllib.error.URLError, TimeoutError, KeyError, json.JSONDecodeError) as e:
-                    print(f"  {q['id']}: помилка виклику: {e}")
-                    answer, perf = "", {"error": str(e)}
+                row_h = hub[q["id"]] if hub else None
+                if row_h and row_h["route"]["route"] == "cards" and not args.no_context:
+                    # Застосунок не викликає модель: показує повідомлення і картки.
+                    ctx_ids = row_h["route"]["card_ids"]
+                    answer, perf = hub_answer(row_h), {"routed": row_h["route"]["topic"]}
+                else:
+                    if row_h and not args.no_context:
+                        ctx_ids = [s["key"].split(":", 1)[1] for s in row_h["sources"]]
+                        msgs = [{"role": "system", "content": row_h["system"]},
+                                {"role": "user", "content": row_h["user"]}]
+                    else:
+                        ctx_ids = [] if args.no_context else [d for d, _ in index.search(q["question"], k=args.k)]
+                        msgs = build_messages(q, [by_id[d] for d in ctx_ids])
+                    try:
+                        answer, perf = chat(m, msgs, args.max_tokens, args.temperature, args.timeout)
+                    except (urllib.error.URLError, TimeoutError, KeyError, json.JSONDecodeError) as e:
+                        print(f"  {q['id']}: помилка виклику: {e}")
+                        answer, perf = "", {"error": str(e)}
+                    if row_h and not args.no_context:
+                        answer = numbers_to_ids(answer, row_h)
                 s = score(q, answer, ctx_ids)
                 row = {"id": q["id"], "type": q["type"], "question": q["question"], "context": ctx_ids,
                        "answer": answer, **s, **perf}

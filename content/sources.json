@@ -7,13 +7,14 @@
     "document_date": "2022-03-09",
     "registration": "Зареєстровано в Мін'юсті 28.03.2022 за № 356/37692",
     "urls": [
+      "https://zakon.rada.gov.ua/laws/show/z0356-22",
       "https://moz.gov.ua/uk/decrees/nakaz-moz-ukraini-vid-09032022--441-pro-zatverdzhennja-porjadkiv-nadannja-domedichnoi-dopomogi-osobam-pri-nevidkladnih-stanah",
       "https://tccc.org.ua/files/downloads/decrees-441.pdf"
     ],
-    "accessed": "2026-11-22",
+    "accessed": "2026-11-24",
     "legal_status": "not_protected_official_document",
     "license": "Не охороняється авторським правом: п. «акти органів державної влади... офіційні документи... адміністративного характеру... а також їх проекти та офіційні переклади», ст. 8 Закону України № 2811-IX",
-    "notes": "29 порядків (додатки). Скасовує наказ МОЗ № 398 від 16.06.2014. На сайті МОЗ змін до наказу не зазначено (перевірити на zakon.rada.gov.ua перед релізом)."
+    "notes": "29 порядків (додатки). Скасовує наказ МОЗ № 398 від 16.06.2014. 24.11.2026 повний текст прочитано на zakon.rada.gov.ua: документ z0356-22 чинний, поточна редакція від 09.03.2022, набрав чинності 08.04.2022, змін немає. Поле source_quote у картках — дослівні пункти звідти, звірені посимвольно (SHA-256)."
   },
   {
     "id": "moz-water",
@@ -25,25 +26,25 @@
       "https://moz.gov.ua/uk/sposobi-znezarazhennja-vodi",
       "https://moz.gov.ua/uk/moz-nagadue-pro-metodi-znezarazhennja-vodi-v-pobutovih-umovah"
     ],
-    "accessed": "2026-11-22",
+    "accessed": "2026-11-24",
     "legal_status": "facts_restated",
     "license": "Пам'ятка органу влади, не нормативний акт. Ми не копіюємо текст, а викладаємо факти й методи власними словами (ідеї, методи і факти не охороняються). Для дослівного використання потрібна згода МОЗ.",
-    "notes": "Дата першої сторінки не вказана; друга датована 09.06.2022."
+    "notes": "Перша сторінка без дати, друга 09.06.2022. Звірено 24.11.2026. Сумнівні місця джерела: «1–2 грами марганцівки на літр» і «знезараження вугіллям триває 8 годин» (див. docs/content-verification/2026-11-24.md)."
   },
   {
     "id": "moz-co",
     "title": "МОЗ та ДСНС про отруєння чадним газом",
     "publisher": "Міністерство охорони здоров'я України, ДСНС",
     "kind": "public_guidance",
-    "document_date": null,
+    "document_date": "2024-01-19",
     "urls": [
       "https://moz.gov.ua/article/health/chadnij-gaz",
       "https://moz.gov.ua/article/news/ponad-100-vipadkiv-otruen-chadnim-gazom-z-grudnja-moz-ta-dsns-nagadujut-jak-ne-dopustiti-otruennja-ta-jak-dopomogti-postrazhdalim-"
     ],
-    "accessed": "2026-11-22",
+    "accessed": "2026-11-24",
     "legal_status": "facts_restated",
     "license": "Викладено власними словами; дослівне використання потребує згоди.",
-    "notes": "Див. також порядок 18 наказу № 441 (отруєння невідомою речовиною, вдихання газів)."
+    "notes": "Друга сторінка (19.01.2024) — спільна пам'ятка МОЗ і ДСНС; у ній і правило 6 м для генератора. Перша без дати. Звірено 24.11.2026. Див. також порядок 18 наказу № 441."
   },
   {
     "id": "dsns-generator",
@@ -126,7 +127,7 @@
       "https://www.unicef.org/ukraine/stories/protect-yourself-from-mines-and-ammunition",
       "https://www.unicef.org/ukraine/stories/mine-safety-rules-for-children"
     ],
-    "accessed": "2026-11-22",
+    "accessed": "2026-11-24",
     "legal_status": "facts_restated",
     "license": "© UNICEF. Умови unicef.org/legal не перевірено. Лише факти власними словами; для ілюстрацій чи тексту потрібна згода.",
     "notes": "Хороший кандидат на партнерство (матеріали для дітей)."

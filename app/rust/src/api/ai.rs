@@ -1,5 +1,6 @@
 use uautonomy_core::rag;
 
+use crate::api::library::CardView;
 use crate::state;
 
 pub struct SourceView {
@@ -46,5 +47,54 @@ pub fn build_rag_prompt(question: String, context_tokens: u32) -> RagView {
                 reviewed: x.reviewed,
             })
             .collect(),
+    }
+}
+
+/// Як відповідати на запитання: `generate` — модель відповідає з опорою на
+/// бібліотеку; `cards` — модель мовчить, застосунок показує `message` і
+/// готові картки (медичні запитання, міни, кризові повідомлення).
+pub struct RouteView {
+    pub mode: String,
+    /// `medical`, `mines` або `crisis` для режиму `cards`.
+    pub topic: Option<String>,
+    pub message: String,
+    pub cards: Vec<CardView>,
+}
+
+#[flutter_rust_bridge::frb(sync)]
+pub fn ask_route(question: String) -> RouteView {
+    let generate = RouteView {
+        mode: "generate".into(),
+        topic: None,
+        message: String::new(),
+        cards: Vec::new(),
+    };
+    let Ok(a) = state::app_ref() else {
+        return generate;
+    };
+    let s = a.shared.read().unwrap();
+    match rag::route(&s.library, &question) {
+        rag::Route::Generate => generate,
+        rag::Route::Cards {
+            topic,
+            message,
+            card_ids,
+        } => RouteView {
+            mode: "cards".into(),
+            topic: Some(
+                match topic {
+                    rag::Topic::Medical => "medical",
+                    rag::Topic::Mines => "mines",
+                    rag::Topic::Crisis => "crisis",
+                }
+                .into(),
+            ),
+            message,
+            cards: card_ids
+                .iter()
+                .filter_map(|id| s.library.card(id))
+                .map(CardView::from)
+                .collect(),
+        },
     }
 }

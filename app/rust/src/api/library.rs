@@ -14,6 +14,10 @@ pub struct CardView {
     pub source: String,
     pub reviewed: bool,
     pub review_required: Option<String>,
+    /// Дослівний текст офіційного джерела (пункти наказу МОЗ № 441).
+    pub source_quote: Option<String>,
+    /// Адреса офіційного тексту.
+    pub source_url: Option<String>,
 }
 
 impl From<&Card> for CardView {
@@ -31,6 +35,8 @@ impl From<&Card> for CardView {
             },
             reviewed: c.reviewed,
             review_required: c.review_required.clone(),
+            source_quote: c.source_quote.clone(),
+            source_url: c.source_url.clone(),
         }
     }
 }

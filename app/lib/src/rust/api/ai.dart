@@ -4,6 +4,7 @@
 // ignore_for_file: invalid_use_of_internal_member, unused_import, unnecessary_import
 
 import '../frb_generated.dart';
+import 'library.dart';
 
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
@@ -17,6 +18,9 @@ Future<RagView> buildRagPrompt({
   question: question,
   contextTokens: contextTokens,
 );
+
+RouteView askRoute({required String question}) =>
+    RustLib.instance.api.crateApiAiAskRoute(question: question);
 
 class RagView {
   final String system;
@@ -40,6 +44,39 @@ class RagView {
           system == other.system &&
           user == other.user &&
           sources == other.sources;
+}
+
+/// Як відповідати на запитання: `generate` — модель відповідає з опорою на
+/// бібліотеку; `cards` — модель мовчить, застосунок показує `message` і
+/// готові картки (медичні запитання, міни, кризові повідомлення).
+class RouteView {
+  final String mode;
+
+  /// `medical`, `mines` або `crisis` для режиму `cards`.
+  final String? topic;
+  final String message;
+  final List<CardView> cards;
+
+  const RouteView({
+    required this.mode,
+    this.topic,
+    required this.message,
+    required this.cards,
+  });
+
+  @override
+  int get hashCode =>
+      mode.hashCode ^ topic.hashCode ^ message.hashCode ^ cards.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is RouteView &&
+          runtimeType == other.runtimeType &&
+          mode == other.mode &&
+          topic == other.topic &&
+          message == other.message &&
+          cards == other.cards;
 }
 
 class SourceView {

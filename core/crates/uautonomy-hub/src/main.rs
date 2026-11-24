@@ -12,6 +12,8 @@
 //!                       [--merge зовнішні-пакети.json]...   (додає лише відсутні id)
 //! uautonomy-hub regions                            (області для карт, JSON)
 //! uautonomy-hub zim-check <файл.zim> [запит]...      (перевірка читача на справжньому ZIM)
+//! uautonomy-hub rag [--data <тека>] [--context-tokens 4096] < питання.jsonl
+//!                       (маршрут, промпт і джерела так само, як у застосунку; для eval)
 //!
 //! `--release-url` / `--stage`: для плаского хостингу (GitHub Releases) кожен
 //! файл копіюється в `--stage` під іменем `<id>--<шлях>` і отримує пряму адресу.
@@ -33,6 +35,7 @@ fn main() -> ExitCode {
         Some("export") => export(&args[1..]),
         Some("catalog") => catalog(&args[1..]),
         Some("zim-check") => zim_check(&args[1..]),
+        Some("rag") => rag(&args[1..]),
         Some("regions") => {
             println!(
                 "{}",
@@ -42,7 +45,7 @@ fn main() -> ExitCode {
         }
         _ => {
             eprintln!(
-                "uautonomy-hub {}\nКоманди: serve, install, pack, export, catalog, regions, zim-check (див. документацію в main.rs)",
+                "uautonomy-hub {}\nКоманди: serve, install, pack, export, catalog, regions, zim-check, rag (див. документацію в main.rs)",
                 uautonomy_core::version()
             );
             return ExitCode::from(2);
@@ -282,6 +285,57 @@ fn zim_check(args: &[String]) -> R {
             let preview: String = p.text.chars().take(160).collect();
             println!("  уривок: {preview}");
         }
+    }
+    Ok(())
+}
+
+/// Для eval: читає JSONL з полями `id` і `question` і для кожного питання
+/// друкує JSON-рядок з тим самим маршрутом, промптом і джерелами, що й
+/// застосунок (`rag::route` + `rag::build_prompt`). Так eval міряє продукт.
+fn rag(args: &[String]) -> R {
+    use std::io::BufRead;
+    use uautonomy_core::rag;
+    let mut lib = content::builtin_base();
+    if let Some(dir) = opt(args, "--data") {
+        let store = PackStore::open(PathBuf::from(dir))?;
+        for w in content::load_installed(&mut lib, &store) {
+            eprintln!("попередження: {w}");
+        }
+    }
+    let ctx_tokens: usize = opt(args, "--context-tokens")
+        .map(|v| v.parse())
+        .transpose()?
+        .unwrap_or(4096);
+    // Як у застосунку (app/rust/src/api/ai.rs): половина контексту, ~3 символи на токен.
+    let max_chars = (ctx_tokens / 2) * 3;
+    for line in std::io::stdin().lock().lines() {
+        let line = line?;
+        if line.trim().is_empty() {
+            continue;
+        }
+        let q: serde_json::Value = serde_json::from_str(&line)?;
+        let question = q["question"].as_str().unwrap_or_default();
+        let route = rag::route(&lib, question);
+        let p = rag::build_prompt(&lib, question, 5, max_chars);
+        let cards: Vec<serde_json::Value> = match &route {
+            rag::Route::Cards { card_ids, .. } => card_ids
+                .iter()
+                .filter_map(|id| lib.card(id))
+                .map(|c| serde_json::json!({"id": c.id, "title": c.title, "text": c.full_text()}))
+                .collect(),
+            rag::Route::Generate => Vec::new(),
+        };
+        let out = serde_json::json!({
+            "id": q["id"],
+            "route": route,
+            "cards": cards,
+            "system": p.system,
+            "user": p.user,
+            "sources": p.passages.iter().map(|x| serde_json::json!({
+                "key": x.key, "title": x.title, "source": x.source, "reviewed": x.reviewed
+            })).collect::<Vec<_>>(),
+        });
+        println!("{}", serde_json::to_string(&out)?);
     }
     Ok(())
 }

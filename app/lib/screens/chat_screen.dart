@@ -4,6 +4,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:uautonomy/ai/ai_service.dart';
 import 'package:uautonomy/screens/common.dart';
 import 'package:uautonomy/screens/library_screen.dart';
+import 'package:uautonomy/src/rust/api/ai.dart';
 import 'package:uautonomy/src/rust/api/device.dart';
 import 'package:uautonomy/src/rust/api/library.dart';
 
@@ -208,7 +209,7 @@ class _ChatScreenState extends State<ChatScreen> {
               Expanded(
                 child: TextField(
                   controller: _input,
-                  enabled: _ai.isLoaded && !_loading,
+                  enabled: !_loading,
                   minLines: 1,
                   maxLines: 4,
                   textInputAction: TextInputAction.send,
@@ -216,7 +217,7 @@ class _ChatScreenState extends State<ChatScreen> {
                   decoration: InputDecoration(
                     hintText: _ai.isLoaded
                         ? 'Запитайте, наприклад: як очистити воду?'
-                        : 'Спершу оберіть модель',
+                        : 'Медичні картки знайдуться і без моделі',
                     border: const OutlineInputBorder(),
                   ),
                 ),
@@ -234,7 +235,7 @@ class _ChatScreenState extends State<ChatScreen> {
                   : IconButton.filled(
                       tooltip: 'Надіслати',
                       icon: const Icon(Icons.send),
-                      onPressed: _ai.isLoaded ? _send : null,
+                      onPressed: _loading ? null : _send,
                     ),
             ],
           ),
@@ -270,7 +271,9 @@ class _AnswerTile extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 8),
-          if (answer.error != null)
+          if (answer.route != null)
+            _RoutedAnswer(route: answer.route!)
+          else if (answer.error != null)
             Text(
               'Помилка: ${answer.error}',
               style: TextStyle(color: scheme.error),
@@ -313,7 +316,7 @@ class _AnswerTile extends StatelessWidget {
                   ),
               ],
             ),
-          ] else if (answer.done)
+          ] else if (answer.done && answer.route == null)
             Text(
               'У бібліотеці не знайдено джерел за цим запитанням.',
               style: t.bodySmall,
@@ -332,5 +335,51 @@ class _AnswerTile extends StatelessWidget {
         context,
       ).push(MaterialPageRoute<void>(builder: (_) => DocScreen(docKey: key)));
     }
+  }
+}
+
+/// Відповідь без моделі: повідомлення і картки з дослівним текстом джерела.
+class _RoutedAnswer extends StatelessWidget {
+  const _RoutedAnswer({required this.route});
+
+  final RouteView route;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = Theme.of(context).textTheme;
+    final scheme = Theme.of(context).colorScheme;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Container(
+          padding: const EdgeInsets.all(10),
+          decoration: BoxDecoration(
+            color: scheme.secondaryContainer,
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Text(route.message, style: t.bodyLarge),
+        ),
+        for (final c in route.cards)
+          Card(
+            margin: const EdgeInsets.only(top: 8),
+            child: ListTile(
+              leading: const Icon(Icons.bolt),
+              title: Text(c.title),
+              subtitle: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (c.summary != null) Text(c.summary!),
+                  if (!c.reviewed) ...[
+                    const SizedBox(height: 4),
+                    UnreviewedBadge(who: c.reviewRequired),
+                  ],
+                ],
+              ),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => openCard(context, c),
+            ),
+          ),
+      ],
+    );
   }
 }
