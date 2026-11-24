@@ -206,3 +206,31 @@ jobs:
           name: uautonomy-windows
           path: app/build/windows/x64/runner/Release/
           retention-days: 14
+
+  windows-e2e:
+    name: Windows (наскрізний тест)
+    runs-on: windows-latest
+    needs: [core, flutter-analyze]
+    timeout-minutes: 60
+    defaults:
+      run:
+        working-directory: app
+    steps:
+      - uses: actions/checkout@v4
+      - name: Базовий пакет із content/
+        run: python tools/build_base_pack.py
+        working-directory: .
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: app/rust
+          key: e2e
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      # Той самий тест, що й на Android-емуляторі: довідка, вкладки, обмін,
+      # а через мережу ще й підписаний каталог і карта Києва.
+      - run: flutter test integration_test/app_test.dart -d windows --dart-define=NETWORK_TESTS=true
