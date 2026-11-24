@@ -126,10 +126,22 @@ impl Library {
         self.zims.iter().find(|(p, _)| p == pack_id).map(|(_, z)| z)
     }
 
+    /// Додає картки. Картка з уже наявним `id` замінює попередню: так
+    /// підписаний пакет виправляє вбудовану картку без нового APK. Пакети
+    /// завантажуються від старших підписів до новіших, тож перемагає
+    /// найновіша редакція.
     pub fn add_cards(&mut self, pack_id: &str, cards: Vec<Card>) {
+        let replaced: std::collections::HashSet<String> = cards
+            .iter()
+            .filter(|c| self.card(&c.id).is_some())
+            .map(|c| format!("card:{}", c.id))
+            .collect();
+        if !replaced.is_empty() {
+            self.rebuild_without(&|d| replaced.contains(&d.key));
+        }
         for c in cards {
             if self.cards.iter().any(|x| x.id == c.id) {
-                continue;
+                continue; // дубль у самому пакеті: лишається перша
             }
             let doc = Doc {
                 key: format!("card:{}", c.id),
@@ -149,7 +161,8 @@ impl Library {
     pub fn add_article(&mut self, pack_id: &str, a: Article, source: &str) {
         let key = format!("article:{}", a.id);
         if self.doc(&key).is_some() {
-            return;
+            // Новіша редакція статті замінює попередню (як і для карток).
+            self.rebuild_without(&|d| d.key == key);
         }
         self.add_doc(
             Doc {
@@ -173,26 +186,35 @@ impl Library {
 
     /// Прибирає все, що прийшло з пакета (після видалення пакета).
     pub fn remove_pack(&mut self, pack_id: &str) {
-        let keep: Vec<Doc> = self
-            .docs
-            .drain(..)
-            .filter(|d| d.pack_id != pack_id)
+        self.rebuild_without(&|d| d.pack_id == pack_id);
+        self.zims.retain(|(p, _)| p != pack_id);
+    }
+
+    /// Перебудовує індекс без документів, для яких `drop` повертає true
+    /// (разом із їхніми картками). Порядок решти зберігається.
+    fn rebuild_without(&mut self, drop: &dyn Fn(&Doc) -> bool) {
+        let docs = std::mem::take(&mut self.docs);
+        let mut cards: HashMap<String, Card> = std::mem::take(&mut self.cards)
+            .into_iter()
+            .map(|c| (c.id.clone(), c))
             .collect();
-        let cards: Vec<Card> = std::mem::take(&mut self.cards);
         let zims = std::mem::take(&mut self.zims);
         *self = Library::default();
-        let kept_cards: Vec<String> = keep
-            .iter()
-            .filter(|d| d.kind == DocKind::Card)
-            .map(|d| d.key.trim_start_matches("card:").to_string())
-            .collect();
-        for c in cards.into_iter().filter(|c| kept_cards.contains(&c.id)) {
-            self.cards.push(c);
+        self.zims = zims;
+        for d in docs {
+            let card = match d.kind {
+                DocKind::Card => cards.remove(d.key.trim_start_matches("card:")),
+                _ => None,
+            };
+            if drop(&d) {
+                continue;
+            }
+            let extra = card.as_ref().map(|c| c.tags.join(" ")).unwrap_or_default();
+            if let Some(c) = card {
+                self.cards.push(c);
+            }
+            self.add_doc(d, &extra);
         }
-        for d in keep {
-            self.add_doc(d, "");
-        }
-        self.zims = zims.into_iter().filter(|(p, _)| p != pack_id).collect();
     }
 
     fn add_doc(&mut self, doc: Doc, extra: &str) {

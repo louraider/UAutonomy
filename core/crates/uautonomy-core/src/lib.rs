@@ -10,6 +10,7 @@
 //! | [`zim`] | читач довідників ZIM (Kiwix) на чистому Rust |
 //! | [`search`], [`text`] | офлайн-пошук BM25 з грубим українським стемінгом |
 //! | [`pack`], [`store`], [`download`] | пакети, SHA-256, докачка, імпорт з USB |
+//! | [`sign`] | підписи пакетів і каталогу ключем проєкту (Ed25519) |
 //! | [`hardware`], [`models`] | можливості пристрою, вибір моделі ШІ |
 //! | [`rag`] | запит до локальної моделі з джерелами |
 //! | [`regions`] | області для офлайн-карт |
@@ -27,6 +28,7 @@ pub mod rag;
 pub mod regions;
 pub mod search;
 pub mod share;
+pub mod sign;
 pub mod store;
 pub mod text;
 pub mod webmap;
@@ -54,6 +56,8 @@ pub enum Error {
     Checksum(String),
     #[error("помилка мережі: {0}")]
     Network(String),
+    #[error("пакет не пройшов перевірку підпису: {0}")]
+    Untrusted(String),
     #[error("скасовано")]
     Cancelled,
     #[error(transparent)]

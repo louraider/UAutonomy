@@ -1,2 +1,9 @@
 target/
 .DS_Store
+# Приватні ключі підпису (пакети, APK) ніколи не комітимо.
+*.keystore
+*.jks
+*.p12
+pack-signing*.key
+*.secret
+.signing-keys/

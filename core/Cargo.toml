@@ -24,3 +24,5 @@ sysinfo = { version = "0.37", default-features = false, features = ["system", "d
 if-addrs = "0.13"
 flate2 = { version = "1", default-features = false, features = ["rust_backend"] }
 tempfile = "3"
+ed25519-dalek = { version = "2", default-features = false, features = ["std", "fast"] }
+getrandom = "0.3"

@@ -39,6 +39,37 @@ pub fn fetch_catalog(url: &str) -> Result<Catalog, Error> {
     Ok(c)
 }
 
+/// Завантажує каталог і його підпис `<url>.sig`. Каталог із інтернету
+/// (https) без дійсного підпису відхиляється. Каталог з іншого телефона чи
+/// хаба в локальній мережі (http) складається на ходу і не підписаний, але
+/// кожен пакет у ньому однаково має підпис проєкту, який перевіряється
+/// перед встановленням.
+pub fn fetch_catalog_checked(url: &str, trust: &crate::sign::Trust) -> Result<Catalog, Error> {
+    let agent = agent();
+    let mut resp = agent.get(url).call().map_err(net)?;
+    let body = resp.body_mut().read_to_vec().map_err(net)?;
+    if url.starts_with("https://") {
+        let sig_url = format!("{url}.sig");
+        let mut sresp = agent
+            .get(&sig_url)
+            .call()
+            .map_err(|e| Error::Untrusted(format!("немає підпису каталогу ({sig_url}): {e}")))?;
+        let sig_text = sresp.body_mut().read_to_string().map_err(net)?;
+        let sig: crate::sign::DetachedSignature = serde_json::from_str(&sig_text)
+            .map_err(|_| Error::Untrusted("пошкоджений підпис каталогу".into()))?;
+        trust.verify_bytes(&body, &sig)?;
+    }
+    let text = String::from_utf8(body).map_err(|_| Error::Invalid("каталог не UTF-8".into()))?;
+    let mut c = Catalog::from_json(&text)?;
+    if c.base_url.is_empty() {
+        c.base_url = url
+            .rsplit_once('/')
+            .map(|(b, _)| b.to_string())
+            .unwrap_or_default();
+    }
+    Ok(c)
+}
+
 fn net(e: ureq::Error) -> Error {
     Error::Network(e.to_string())
 }
@@ -53,7 +84,9 @@ pub fn download_pack(
     cancel: &AtomicBool,
     progress: &mut dyn FnMut(Progress),
 ) -> Result<PackManifest, Error> {
-    pack.validate()?;
+    // Підпис перевіряємо до завантаження, щоб не качати гігабайти даремно,
+    // і ще раз під час встановлення.
+    store.check_new(pack)?;
     let dl = store.download_dir(&pack.id);
     fs::create_dir_all(&dl)?;
     let total = pack.size_bytes();
@@ -151,7 +184,7 @@ fn fetch_resumable(
         have += n as u64;
         progress(have);
     }
-    out.flush()?;
+    out.sync_all()?;
     if have != size {
         return Err(Error::Network(format!("отримано {have} з {size} байтів")));
     }
@@ -170,14 +203,14 @@ mod tests {
         // Телефон А: має пакет.
         let src = t.path().join("src");
         crate::store::tests::sample_pack(&src, "pocket");
-        let a = PackStore::open(t.path().join("a")).unwrap();
+        let a = crate::store::tests::test_store(&t.path().join("a"));
         a.install_from_dir(&src, &mut |_, _| {}).unwrap();
         let state = Arc::new(RwLock::new(ShareState::new(a, crate::Library::default())));
         let server = ShareServer::start(state, 0).unwrap();
         let base = format!("http://127.0.0.1:{}", server.port());
 
         // Телефон Б: частково завантажений файл має докачатися.
-        let b = PackStore::open(t.path().join("b")).unwrap();
+        let b = crate::store::tests::test_store(&t.path().join("b"));
         let cat = fetch_catalog(&format!("{base}/packs/catalog.json")).unwrap();
         let pack = cat.packs[0].clone();
         let dl = b.download_dir("pocket");
@@ -213,8 +246,9 @@ mod tests {
         pack2.files[0].url = Some(format!(
             "http://127.0.0.1:{rport}/release/pocket--cards.json"
         ));
+        crate::sign::sign_pack(&mut pack2, &crate::sign::tests::test_key(), 1000);
         cat2.packs = vec![pack2.clone()];
-        let c = PackStore::open(t.path().join("c")).unwrap();
+        let c = crate::store::tests::test_store(&t.path().join("c"));
         let dl = c.download_dir("pocket");
         fs::create_dir_all(&dl).unwrap();
         fs::write(dl.join("cards.json.part"), &cards[..10]).unwrap();
@@ -228,6 +262,19 @@ mod tests {
             "адреса не зберігається у встановленому маніфесті"
         );
         rthread.join().unwrap();
+
+        // Каталог із локальної мережі без підпису читається (пакети в ньому
+        // підписані окремо); підмінений пакет у ньому не встановлюється.
+        let trust = crate::sign::tests::test_trust();
+        let cat3 = fetch_catalog_checked(&format!("{base}/packs/catalog.json"), &trust).unwrap();
+        let mut evil = cat3.packs[0].clone();
+        evil.title = "Підмінений".into();
+        let d = crate::store::tests::test_store(&t.path().join("d"));
+        assert!(matches!(
+            download_pack(&d, &cat3, &evil, &cancel, &mut |_| {}),
+            Err(Error::Untrusted(_))
+        ));
+        assert!(!d.download_dir("pocket").exists(), "нічого не завантажено");
 
         cancel.store(true, Ordering::Relaxed);
         b.remove("pocket").unwrap();

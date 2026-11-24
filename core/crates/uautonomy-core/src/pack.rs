@@ -62,6 +62,10 @@ pub struct PackManifest {
     /// Для моделей: ідентифікатор з [`crate::models`].
     #[serde(default)]
     pub model_id: Option<String>,
+    /// Підпис ключем проєкту ([`crate::sign`]). Без дійсного підпису пакет
+    /// не встановлюється.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub signature: Option<crate::sign::PackSignature>,
 }
 
 impl PackManifest {
@@ -73,6 +77,11 @@ impl PackManifest {
 
     pub fn to_json(&self) -> String {
         serde_json::to_string_pretty(self).expect("маніфест серіалізується")
+    }
+
+    /// Коли підписано (0 — не підписано).
+    pub fn issued(&self) -> u64 {
+        self.signature.as_ref().map_or(0, |s| s.issued)
     }
 
     pub fn size_bytes(&self) -> u64 {

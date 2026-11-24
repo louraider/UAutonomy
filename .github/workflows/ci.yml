@@ -88,11 +88,39 @@ jobs:
           channel: stable
           cache: true
       - run: flutter pub get
-      - run: flutter build apk --release --split-per-abi
+      # Постійний ключ із секретів репозиторію (див. docs/signing.md). Без
+      # секретів (наприклад, PR із форку) збірка підписується debug-ключем
+      # з попередженням; на main ключ обов'язковий.
+      - name: Ключ підпису APK
+        env:
+          KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+        run: |
+          if [ -z "$KEYSTORE_B64" ] || [ -z "$KEYSTORE_PASSWORD" ]; then
+            echo "::warning::Секрети ANDROID_KEYSTORE_BASE64 / ANDROID_KEYSTORE_PASSWORD не задані: APK буде з debug-ключем"
+            if [ "${{ github.event_name }}" = "push" ]; then
+              echo "::error::На main реліз без постійного ключа не збираємо"; exit 1
+            fi
+            exit 0
+          fi
+          echo "$KEYSTORE_B64" | base64 -d > "$RUNNER_TEMP/release.p12"
+          echo "UAUTONOMY_KEYSTORE=$RUNNER_TEMP/release.p12" >> "$GITHUB_ENV"
+          echo "UAUTONOMY_REQUIRE_RELEASE_KEY=1" >> "$GITHUB_ENV"
+      # Один універсальний APK для всіх процесорів: його «Обмін» роздає
+      # іншим телефонам, і він має встановитися на будь-якому.
+      - run: flutter build apk --release
+        env:
+          UAUTONOMY_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+      - name: Сертифікат підпису APK
+        run: |
+          APKSIGNER=$(ls "$ANDROID_HOME"/build-tools/*/apksigner | sort -V | tail -1)
+          "$APKSIGNER" verify --print-certs build/app/outputs/flutter-apk/app-release.apk | tee cert.txt
+          if grep -q "CN=Android Debug" cert.txt; then echo "::warning::APK підписано debug-ключем"; fi
+          mv build/app/outputs/flutter-apk/app-release.apk build/app/outputs/flutter-apk/avtonomiia.apk
       - uses: actions/upload-artifact@v4
         with:
           name: uautonomy-android-apk
-          path: app/build/app/outputs/flutter-apk/*.apk
+          path: app/build/app/outputs/flutter-apk/avtonomiia.apk
           retention-days: 14
 
   android-e2e:

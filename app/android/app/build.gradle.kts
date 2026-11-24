@@ -1,8 +1,28 @@
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
 }
+
+// Постійний ключ підпису релізу. Береться зі змінних середовища (CI, секрети
+// GitHub) або з app/android/key.properties (локально; файл у .gitignore).
+// Сам ключ і паролі ніколи не комітяться. Android приймає оновлення лише з
+// тим самим ключем, тому його втрата означає, що люди не зможуть оновитися.
+val keyProps = Properties().apply {
+    val f = rootProject.file("key.properties")
+    if (f.exists()) f.inputStream().use { load(it) }
+}
+
+fun signingValue(env: String, prop: String): String? =
+    System.getenv(env)?.takeIf { it.isNotBlank() } ?: keyProps.getProperty(prop)
+
+val releaseStoreFile = signingValue("UAUTONOMY_KEYSTORE", "storeFile")
+val releaseStorePassword = signingValue("UAUTONOMY_KEYSTORE_PASSWORD", "storePassword")
+val releaseKeyAlias = signingValue("UAUTONOMY_KEY_ALIAS", "keyAlias") ?: "uautonomy"
+val releaseKeyPassword = signingValue("UAUTONOMY_KEY_PASSWORD", "keyPassword") ?: releaseStorePassword
+val hasReleaseKey = releaseStoreFile != null && releaseStorePassword != null
 
 android {
     namespace = "org.uautonomy.uautonomy"
@@ -14,8 +34,20 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
 
+    signingConfigs {
+        if (hasReleaseKey) {
+            create("release") {
+                storeFile = file(releaseStoreFile!!)
+                storePassword = releaseStorePassword
+                keyAlias = releaseKeyAlias
+                keyPassword = releaseKeyPassword
+            }
+        }
+    }
+
     defaultConfig {
-        // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
+        // Остаточний ідентифікатор: після першої роздачі змінити не можна
+        // (інакше Android вважатиме це іншим застосунком).
         applicationId = "org.uautonomy.app"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
@@ -31,9 +63,17 @@ android {
 
     buildTypes {
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = if (hasReleaseKey) {
+                signingConfigs.getByName("release")
+            } else {
+                if (System.getenv("UAUTONOMY_REQUIRE_RELEASE_KEY") == "1") {
+                    throw GradleException(
+                        "Немає ключа підпису релізу: задайте UAUTONOMY_KEYSTORE і UAUTONOMY_KEYSTORE_PASSWORD",
+                    )
+                }
+                logger.warn("УВАГА: реліз підписано debug-ключем (немає постійного ключа). Таку збірку не роздавайте людям.")
+                signingConfigs.getByName("debug")
+            }
         }
     }
 }

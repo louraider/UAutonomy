@@ -649,7 +649,7 @@ mod tests {
     #[test]
     fn serves_library() {
         let t = tempfile::tempdir().unwrap();
-        let store = PackStore::open(t.path()).unwrap();
+        let store = crate::store::tests::test_store(t.path());
         let src = t.path().join("src");
         crate::store::tests::sample_pack(&src, "pocket");
         store.install_from_dir(&src, &mut |_, _| {}).unwrap();
@@ -691,7 +691,7 @@ mod tests {
     #[test]
     fn serves_map_for_browsers() {
         let t = tempfile::tempdir().unwrap();
-        let store = PackStore::open(t.path().join("store")).unwrap();
+        let store = crate::store::tests::test_store(&t.path().join("store"));
         let src = t.path().join("map-kyiv");
         fs::create_dir_all(&src).unwrap();
         let tile = b"\x1a\x00mvt".to_vec();
@@ -713,10 +713,12 @@ mod tests {
                 content_license: "ODbL-1.0".into(),
                 region: Some("kyiv".into()),
                 model_id: None,
+                signature: None,
             },
         )
         .unwrap();
         fs::write(src.join("manifest.json"), m.to_json()).unwrap();
+        crate::store::tests::sign_dir(&src, 1000);
         store.install_from_dir(&src, &mut |_, _| {}).unwrap();
         let state = Arc::new(RwLock::new(ShareState::new(store, Library::new(vec![]))));
         let s = ShareServer::start(state, 0).unwrap();
