@@ -10,6 +10,10 @@ class AiAnswer {
 
   final String question;
   final List<SourceView> sources;
+
+  /// Якщо не null, модель не викликалась: на медичні запитання, міни й
+  /// кризові повідомлення застосунок показує готові картки й контакти.
+  RouteView? route;
   final StringBuffer text = StringBuffer();
   bool done = false;
   String? error;
@@ -74,6 +78,19 @@ class AiService {
     String question,
     StreamController<AiAnswer> controller,
   ) async {
+    // Медичне запитання, міни чи криза: ШІ не відповідає своїми словами,
+    // показуємо картки з дослівним текстом джерела. Працює і без моделі.
+    final route = askRoute(question: question);
+    if (route.mode == 'cards') {
+      controller
+        ..add(
+          AiAnswer(question, const [])
+            ..route = route
+            ..done = true,
+        )
+        ..close();
+      return;
+    }
     final engine = _engine;
     final rag = await buildRagPrompt(
       question: question,

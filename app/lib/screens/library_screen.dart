@@ -194,10 +194,60 @@ class CardScreen extends StatelessWidget {
                 title: Text(w),
               ),
           ],
+          if (card.sourceQuote != null) ...[
+            const SizedBox(height: 16),
+            _SourceQuote(card: card),
+          ],
           const SizedBox(height: 16),
           Text('Джерело: ${card.source}', style: t.bodySmall),
+          if (card.sourceUrl != null)
+            SelectableText('Оригінал: ${card.sourceUrl}', style: t.bodySmall),
           const SizedBox(height: 8),
           Text(emergencyNote, style: t.bodySmall),
+        ],
+      ),
+    );
+  }
+}
+
+/// Дослівний текст офіційного джерела під кроками картки. Кроки вище —
+/// переказ простими словами; якщо вони розходяться, правильний цей текст.
+class _SourceQuote extends StatelessWidget {
+  const _SourceQuote({required this.card});
+
+  final CardView card;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = Theme.of(context).textTheme;
+    final scheme = Theme.of(context).colorScheme;
+    final medical =
+        card.category == 'first_aid' || card.reviewRequired == 'medic';
+    return Card(
+      color: scheme.surfaceContainerHighest,
+      child: ExpansionTile(
+        initiallyExpanded: true,
+        shape: const Border(),
+        title: Text(
+          medical ? 'Дослівно з наказу МОЗ № 441' : 'Дослівно з джерела',
+          style: t.titleMedium,
+        ),
+        subtitle: const Text(
+          'Офіційний текст. Кроки вище — переказ простими словами; '
+          'якщо вони розходяться, правильний цей текст.',
+        ),
+        childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+        expandedCrossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (!card.reviewed) ...[
+            UnreviewedBadge(who: card.reviewRequired),
+            const SizedBox(height: 8),
+          ],
+          SelectableText(card.sourceQuote!, style: t.bodyMedium),
+          if (card.sourceUrl != null) ...[
+            const SizedBox(height: 8),
+            SelectableText(card.sourceUrl!, style: t.bodySmall),
+          ],
         ],
       ),
     );

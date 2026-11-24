@@ -39,7 +39,7 @@ flutter_rust_bridge::frb_generated_boilerplate!(
     default_rust_auto_opaque = RustAutoOpaqueMoi,
 );
 pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_VERSION: &str = "2.13.0";
-pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_CONTENT_HASH: i32 = -331757148;
+pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_CONTENT_HASH: i32 = 1103573713;
 
 // Section: executor
 
@@ -47,6 +47,36 @@ flutter_rust_bridge::frb_generated_default_handler!();
 
 // Section: wire_funcs
 
+fn wire__crate__api__ai__ask_route_impl(
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) -> flutter_rust_bridge::for_generated::WireSyncRust2DartSse {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_sync::<flutter_rust_bridge::for_generated::SseCodec, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "ask_route",
+            port: None,
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Sync,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            let api_question = <String>::sse_decode(&mut deserializer);
+            deserializer.end();
+            transform_result_sse::<_, ()>((move || {
+                let output_ok = Ok::<_, ()>(crate::api::ai::ask_route(api_question))?;
+                std::result::Result::Ok(output_ok)
+            })())
+        },
+    )
+}
 fn wire__crate__api__ai__build_rag_prompt_impl(
     port_: flutter_rust_bridge::for_generated::MessagePort,
     ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
@@ -1082,6 +1112,8 @@ impl SseDecode for crate::api::library::CardView {
         let mut var_source = <String>::sse_decode(deserializer);
         let mut var_reviewed = <bool>::sse_decode(deserializer);
         let mut var_reviewRequired = <Option<String>>::sse_decode(deserializer);
+        let mut var_sourceQuote = <Option<String>>::sse_decode(deserializer);
+        let mut var_sourceUrl = <Option<String>>::sse_decode(deserializer);
         return crate::api::library::CardView {
             id: var_id,
             category: var_category,
@@ -1092,6 +1124,8 @@ impl SseDecode for crate::api::library::CardView {
             source: var_source,
             reviewed: var_reviewed,
             review_required: var_reviewRequired,
+            source_quote: var_sourceQuote,
+            source_url: var_sourceUrl,
         };
     }
 }
@@ -1549,6 +1583,22 @@ impl SseDecode for crate::api::maps::RegionView {
     }
 }
 
+impl SseDecode for crate::api::ai::RouteView {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut var_mode = <String>::sse_decode(deserializer);
+        let mut var_topic = <Option<String>>::sse_decode(deserializer);
+        let mut var_message = <String>::sse_decode(deserializer);
+        let mut var_cards = <Vec<crate::api::library::CardView>>::sse_decode(deserializer);
+        return crate::api::ai::RouteView {
+            mode: var_mode,
+            topic: var_topic,
+            message: var_message,
+            cards: var_cards,
+        };
+    }
+}
+
 impl SseDecode for crate::api::share::ShareInfo {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
@@ -1630,24 +1680,24 @@ fn pde_ffi_dispatcher_primary_impl(
 ) {
     // Codec=Pde (Serialization + dispatch), see doc to use other codecs
     match func_id {
-        1 => wire__crate__api__ai__build_rag_prompt_impl(port, ptr, rust_vec_len, data_len),
-        6 => wire__crate__api__library__document_impl(port, ptr, rust_vec_len, data_len),
-        7 => wire__crate__api__packs__download_pack_impl(port, ptr, rust_vec_len, data_len),
-        8 => wire__crate__api__packs__export_pack_impl(port, ptr, rust_vec_len, data_len),
-        9 => wire__crate__api__packs__fetch_catalog_impl(port, ptr, rust_vec_len, data_len),
-        10 => wire__crate__api__device__hardware_info_impl(port, ptr, rust_vec_len, data_len),
-        11 => wire__crate__api__device__import_model_file_impl(port, ptr, rust_vec_len, data_len),
-        12 => wire__crate__api__packs__import_pack_impl(port, ptr, rust_vec_len, data_len),
-        13 => wire__crate__api__library__init_app_impl(port, ptr, rust_vec_len, data_len),
-        17 => wire__crate__api__maps__map_header_impl(port, ptr, rust_vec_len, data_len),
-        19 => wire__crate__api__maps__map_tile_impl(port, ptr, rust_vec_len, data_len),
-        21 => wire__crate__api__library__open_library_impl(port, ptr, rust_vec_len, data_len),
-        22 => wire__crate__api__device__ram_status_impl(port, ptr, rust_vec_len, data_len),
-        23 => wire__crate__api__device__recommendation_impl(port, ptr, rust_vec_len, data_len),
-        25 => wire__crate__api__device__remove_model_file_impl(port, ptr, rust_vec_len, data_len),
-        26 => wire__crate__api__packs__remove_pack_impl(port, ptr, rust_vec_len, data_len),
-        29 => wire__crate__api__share__start_sharing_impl(port, ptr, rust_vec_len, data_len),
-        30 => wire__crate__api__share__stop_sharing_impl(port, ptr, rust_vec_len, data_len),
+        2 => wire__crate__api__ai__build_rag_prompt_impl(port, ptr, rust_vec_len, data_len),
+        7 => wire__crate__api__library__document_impl(port, ptr, rust_vec_len, data_len),
+        8 => wire__crate__api__packs__download_pack_impl(port, ptr, rust_vec_len, data_len),
+        9 => wire__crate__api__packs__export_pack_impl(port, ptr, rust_vec_len, data_len),
+        10 => wire__crate__api__packs__fetch_catalog_impl(port, ptr, rust_vec_len, data_len),
+        11 => wire__crate__api__device__hardware_info_impl(port, ptr, rust_vec_len, data_len),
+        12 => wire__crate__api__device__import_model_file_impl(port, ptr, rust_vec_len, data_len),
+        13 => wire__crate__api__packs__import_pack_impl(port, ptr, rust_vec_len, data_len),
+        14 => wire__crate__api__library__init_app_impl(port, ptr, rust_vec_len, data_len),
+        18 => wire__crate__api__maps__map_header_impl(port, ptr, rust_vec_len, data_len),
+        20 => wire__crate__api__maps__map_tile_impl(port, ptr, rust_vec_len, data_len),
+        22 => wire__crate__api__library__open_library_impl(port, ptr, rust_vec_len, data_len),
+        23 => wire__crate__api__device__ram_status_impl(port, ptr, rust_vec_len, data_len),
+        24 => wire__crate__api__device__recommendation_impl(port, ptr, rust_vec_len, data_len),
+        26 => wire__crate__api__device__remove_model_file_impl(port, ptr, rust_vec_len, data_len),
+        27 => wire__crate__api__packs__remove_pack_impl(port, ptr, rust_vec_len, data_len),
+        30 => wire__crate__api__share__start_sharing_impl(port, ptr, rust_vec_len, data_len),
+        31 => wire__crate__api__share__stop_sharing_impl(port, ptr, rust_vec_len, data_len),
         _ => unreachable!(),
     }
 }
@@ -1660,18 +1710,19 @@ fn pde_ffi_dispatcher_sync_impl(
 ) -> flutter_rust_bridge::for_generated::WireSyncRust2DartSse {
     // Codec=Pde (Serialization + dispatch), see doc to use other codecs
     match func_id {
-        2 => wire__crate__api__packs__cancel_download_impl(ptr, rust_vec_len, data_len),
-        3 => wire__crate__api__library__card_impl(ptr, rust_vec_len, data_len),
-        4 => wire__crate__api__library__categories_impl(ptr, rust_vec_len, data_len),
-        5 => wire__crate__api__library__core_version_impl(ptr, rust_vec_len, data_len),
-        14 => wire__crate__api__packs__installed_packs_impl(ptr, rust_vec_len, data_len),
-        15 => wire__crate__api__library__library_info_impl(ptr, rust_vec_len, data_len),
-        16 => wire__crate__api__device__local_models_impl(ptr, rust_vec_len, data_len),
-        18 => wire__crate__api__maps__map_regions_impl(ptr, rust_vec_len, data_len),
-        20 => wire__crate__api__device__model_catalog_impl(ptr, rust_vec_len, data_len),
-        24 => wire__crate__api__maps__region_at_impl(ptr, rust_vec_len, data_len),
-        27 => wire__crate__api__library__search_impl(ptr, rust_vec_len, data_len),
-        28 => wire__crate__api__share__sharing_status_impl(ptr, rust_vec_len, data_len),
+        1 => wire__crate__api__ai__ask_route_impl(ptr, rust_vec_len, data_len),
+        3 => wire__crate__api__packs__cancel_download_impl(ptr, rust_vec_len, data_len),
+        4 => wire__crate__api__library__card_impl(ptr, rust_vec_len, data_len),
+        5 => wire__crate__api__library__categories_impl(ptr, rust_vec_len, data_len),
+        6 => wire__crate__api__library__core_version_impl(ptr, rust_vec_len, data_len),
+        15 => wire__crate__api__packs__installed_packs_impl(ptr, rust_vec_len, data_len),
+        16 => wire__crate__api__library__library_info_impl(ptr, rust_vec_len, data_len),
+        17 => wire__crate__api__device__local_models_impl(ptr, rust_vec_len, data_len),
+        19 => wire__crate__api__maps__map_regions_impl(ptr, rust_vec_len, data_len),
+        21 => wire__crate__api__device__model_catalog_impl(ptr, rust_vec_len, data_len),
+        25 => wire__crate__api__maps__region_at_impl(ptr, rust_vec_len, data_len),
+        28 => wire__crate__api__library__search_impl(ptr, rust_vec_len, data_len),
+        29 => wire__crate__api__share__sharing_status_impl(ptr, rust_vec_len, data_len),
         _ => unreachable!(),
     }
 }
@@ -1691,6 +1742,8 @@ impl flutter_rust_bridge::IntoDart for crate::api::library::CardView {
             self.source.into_into_dart().into_dart(),
             self.reviewed.into_into_dart().into_dart(),
             self.review_required.into_into_dart().into_dart(),
+            self.source_quote.into_into_dart().into_dart(),
+            self.source_url.into_into_dart().into_dart(),
         ]
         .into_dart()
     }
@@ -2022,6 +2075,24 @@ impl flutter_rust_bridge::IntoIntoDart<crate::api::maps::RegionView>
     }
 }
 // Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for crate::api::ai::RouteView {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        [
+            self.mode.into_into_dart().into_dart(),
+            self.topic.into_into_dart().into_dart(),
+            self.message.into_into_dart().into_dart(),
+            self.cards.into_into_dart().into_dart(),
+        ]
+        .into_dart()
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive for crate::api::ai::RouteView {}
+impl flutter_rust_bridge::IntoIntoDart<crate::api::ai::RouteView> for crate::api::ai::RouteView {
+    fn into_into_dart(self) -> crate::api::ai::RouteView {
+        self
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
 impl flutter_rust_bridge::IntoDart for crate::api::share::ShareInfo {
     fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
         [
@@ -2102,6 +2173,8 @@ impl SseEncode for crate::api::library::CardView {
         <String>::sse_encode(self.source, serializer);
         <bool>::sse_encode(self.reviewed, serializer);
         <Option<String>>::sse_encode(self.review_required, serializer);
+        <Option<String>>::sse_encode(self.source_quote, serializer);
+        <Option<String>>::sse_encode(self.source_url, serializer);
     }
 }
 
@@ -2421,6 +2494,16 @@ impl SseEncode for crate::api::maps::RegionView {
         <f64>::sse_encode(self.center_lon, serializer);
         <String>::sse_encode(self.pack_id, serializer);
         <Option<String>>::sse_encode(self.map_path, serializer);
+    }
+}
+
+impl SseEncode for crate::api::ai::RouteView {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <String>::sse_encode(self.mode, serializer);
+        <Option<String>>::sse_encode(self.topic, serializer);
+        <String>::sse_encode(self.message, serializer);
+        <Vec<crate::api::library::CardView>>::sse_encode(self.cards, serializer);
     }
 }
 

@@ -14,7 +14,7 @@ class UnreviewedBadge extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final label = switch (who) {
-      'medic' => 'Ще не перевірено медиком',
+      'medic' => 'Не перевірено лікарем',
       'deminer' => 'Ще не перевірено сапером',
       _ => 'Ще не перевірено фахівцем',
     };

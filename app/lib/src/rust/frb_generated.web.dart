@@ -142,6 +142,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   RegionView dco_decode_region_view(dynamic raw);
 
   @protected
+  RouteView dco_decode_route_view(dynamic raw);
+
+  @protected
   ShareInfo dco_decode_share_info(dynamic raw);
 
   @protected
@@ -278,6 +281,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   RegionView sse_decode_region_view(SseDeserializer deserializer);
+
+  @protected
+  RouteView sse_decode_route_view(SseDeserializer deserializer);
 
   @protected
   ShareInfo sse_decode_share_info(SseDeserializer deserializer);
@@ -455,6 +461,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   void sse_encode_region_view(RegionView self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_route_view(RouteView self, SseSerializer serializer);
 
   @protected
   void sse_encode_share_info(ShareInfo self, SseSerializer serializer);
