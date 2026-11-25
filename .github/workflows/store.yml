@@ -93,11 +93,16 @@ jobs:
         run: |
           CODE=$((PLAY_VERSION_OFFSET + GITHUB_RUN_NUMBER))
           echo "versionCode: $CODE"
-          flutter build appbundle --release \
-            --build-number=$CODE \
-            --dart-define=UAUTONOMY_BUILD=${{ github.run_number }} \
-            --dart-define=UAUTONOMY_DIST=play \
-            --split-debug-info=build/symbols
+          # Maven Central часом відповідає 429 (забагато запитів): повтор.
+          for i in 1 2 3; do
+            flutter build appbundle --release \
+              --build-number=$CODE \
+              --dart-define=UAUTONOMY_BUILD=${{ github.run_number }} \
+              --dart-define=UAUTONOMY_DIST=play \
+              --split-debug-info=build/symbols && exit 0
+            echo "::warning::спроба $i не вдалася, повтор"; sleep 60
+          done
+          exit 1
       # З листопада 2025 Play приймає лише застосунки, чиї нативні бібліотеки
       # вирівняно на сторінки 16 КБ (Android 15+). Перевіряємо кожну .so.
       - name: Бібліотеки вирівняно на 16 КБ
