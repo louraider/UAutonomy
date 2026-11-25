@@ -75,5 +75,13 @@ Future<String> localPathFor(PlatformFile f, String destDir) async {
   return out.path;
 }
 
+/// Прибирає копії файлів, які iOS зробив для FilePicker у тимчасовій теці
+/// застосунку. Пакети й моделі важать сотні мегабайтів і гігабайти.
+Future<void> clearPickedCopies() async {
+  try {
+    await FilePicker.clearTemporaryFiles();
+  } catch (_) {}
+}
+
 Future<String> appDataDir() async =>
     (await getApplicationSupportDirectory()).path;

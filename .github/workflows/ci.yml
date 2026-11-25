@@ -259,6 +259,76 @@ jobs:
       # а через мережу ще й підписаний каталог і карта Києва.
       - run: flutter test integration_test/app_test.dart -d windows --dart-define=NETWORK_TESTS=true
 
+  # iOS: збірка без підпису (підпис і TestFlight потребують облікового
+  # запису Apple Developer, див. docs/ios.md) і той самий наскрізний тест
+  # на симуляторі iPhone, плюс запуск llama.cpp на крихітній моделі.
+  ios:
+    name: iOS (збірка без підпису і симулятор)
+    runs-on: macos-15
+    needs: [core, flutter-analyze]
+    timeout-minutes: 90
+    defaults:
+      run:
+        working-directory: app
+    steps:
+      - uses: actions/checkout@v4
+      - name: Базовий пакет із content/
+        run: python3 tools/build_base_pack.py
+        working-directory: .
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-ios,aarch64-apple-ios-sim
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: app/rust
+          key: ios
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - name: Xcode
+        run: xcodebuild -version && xcrun simctl list runtimes
+      # Release-збірка для справжнього iPhone (arm64), без підпису: перевіряє,
+      # що Rust-ядро, llama.cpp (Metal, через SwiftPM) і плагіни лінкуються.
+      - run: flutter build ios --release --no-codesign
+      - name: Розмір і вміст збірки
+        working-directory: app/build/ios/iphoneos
+        run: |
+          du -sh Runner.app
+          du -sh Runner.app/Frameworks/* | sort -h | tail -15
+          # Маніфест приватності і ключі, без яких App Store відхилить збірку.
+          test -f Runner.app/PrivacyInfo.xcprivacy
+          plutil -p Runner.app/Info.plist | grep -E "CFBundleDisplayName|MinimumOSVersion|ITSAppUsesNonExemptEncryption"
+          mkdir -p Payload && cp -R Runner.app Payload/
+          zip -q -r -y avtonomiia-ios-unsigned.ipa Payload
+          ls -l avtonomiia-ios-unsigned.ipa
+      - uses: actions/upload-artifact@v4
+        with:
+          name: uautonomy-ios-unsigned
+          path: app/build/ios/iphoneos/avtonomiia-ios-unsigned.ipa
+          retention-days: 14
+      - name: Симулятор iPhone
+        run: |
+          UDID=$(xcrun simctl list devices available -j | python3 -c '
+          import json, sys
+          d = json.load(sys.stdin)["devices"]
+          ios = sorted((r for r in d if "iOS" in r), key=lambda r: [int(x) for x in r.rsplit("iOS-", 1)[1].split("-")])
+          for r in reversed(ios):
+              for dev in d[r]:
+                  if dev["name"].startswith("iPhone"):
+                      print(dev["udid"]); sys.exit(0)
+          sys.exit("немає симулятора iPhone")')
+          echo "SIM_UDID=$UDID" >> "$GITHUB_ENV"
+          xcrun simctl boot "$UDID"
+          xcrun simctl bootstatus "$UDID" -b
+      # Офлайн-довідка, вкладки, обмін, а через мережу ще й підписаний
+      # каталог, карта Києва і llama.cpp на крихітній моделі.
+      - run: >-
+          flutter test integration_test/app_test.dart -d "$SIM_UDID"
+          --dart-define=NETWORK_TESTS=true --dart-define=AI_TESTS=true
+
   # Після кожного злиття в main: свіжі APK і Windows-збірка в релізі `app`.
   # Назви файлів сталі, тож посилання з сайту uautonomy.app не змінюються:
   # https://github.com/louraider/UAutonomy/releases/download/app/avtonomiia.apk

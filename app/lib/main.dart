@@ -1,3 +1,6 @@
+import 'dart:io';
+
+import 'package:flutter/services.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:uautonomy/screens/chat_screen.dart';
@@ -13,6 +16,7 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await RustLib.init();
   final dir = await getApplicationSupportDirectory();
+  if (Platform.isIOS) await _excludeFromBackup(dir.path);
   String? error;
   try {
     await openLibrary(dataDir: dir.path);
@@ -20,6 +24,17 @@ Future<void> main() async {
     error = '$e';
   }
   runApp(UAutonomyApp(startupError: error));
+}
+
+/// На iPhone тека застосунку потрапляє в резервну копію iCloud, а там
+/// гігабайти карт, енциклопедій і моделей, які можна завантажити знову.
+/// Apple вимагає таке виключати з копії (iCloud Data Storage Guidelines),
+/// інакше App Store відхиляє застосунок, а користувачеві забивається iCloud.
+Future<void> _excludeFromBackup(String path) async {
+  try {
+    await const MethodChannel('org.uautonomy/app')
+        .invokeMethod<void>('excludeFromBackup', {'path': path});
+  } catch (_) {}
 }
 
 class UAutonomyApp extends StatelessWidget {

@@ -13,10 +13,12 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 import 'package:material_ui/material_ui.dart';
+import 'package:uautonomy/ai/ai_service.dart';
 import 'package:uautonomy/main.dart';
 import 'package:uautonomy/screens/library_screen.dart';
 import 'package:uautonomy/screens/packs_screen.dart';
 import 'package:uautonomy/screens/share_screen.dart';
+import 'package:uautonomy/src/rust/api/device.dart';
 import 'package:uautonomy/src/rust/api/library.dart';
 import 'package:uautonomy/src/rust/api/maps.dart';
 import 'package:uautonomy/src/rust/api/packs.dart';
@@ -25,6 +27,12 @@ import 'package:uautonomy/src/rust/frb_generated.dart';
 import 'package:vector_map_tiles/vector_map_tiles.dart';
 
 const networkTests = bool.fromEnvironment('NETWORK_TESTS');
+
+/// Запуск llama.cpp на крихітній моделі (stories260K, ~1 МБ). Вмикається
+/// окремо (CI на симуляторі iOS), бо модель завантажується з Hugging Face.
+const aiTests = bool.fromEnvironment('AI_TESTS');
+const tinyModelUrl =
+    'https://huggingface.co/ggml-org/models/resolve/main/tinyllamas/stories260K.gguf';
 
 /// `pumpAndSettle` зависає на нескінченних анімаціях (індикатори
 /// завантаження), тому чекаємо фіксований час.
@@ -208,5 +216,30 @@ void main() {
     },
     skip: !networkTests,
     timeout: const Timeout(Duration(minutes: 10)),
+  );
+
+  testWidgets(
+    'llama.cpp завантажує модель GGUF',
+    (tester) async {
+      final dir = await Directory.systemTemp.createTemp('uautonomy-ai');
+      final file = File('${dir.path}/stories260K.gguf');
+      final client = HttpClient();
+      final resp = await (await client.getUrl(Uri.parse(tinyModelUrl))).close();
+      expect(resp.statusCode, 200);
+      await resp.pipe(file.openWrite());
+      client.close();
+
+      final model = await importModelFile(path: file.path);
+      final ai = AiService();
+      await ai.load(model);
+      expect(ai.isLoaded, isTrue);
+      // На iPhone llama.cpp має працювати через Metal; на симуляторі
+      // залежить від Mac, тож лише друкуємо, що вибрано.
+      debugPrint('llama.cpp: ${ai.backendName}, шарів на GPU: ${ai.gpuLayers}');
+      expect(ai.backendName, isNotNull);
+      await ai.unload();
+    },
+    skip: !aiTests,
+    timeout: const Timeout(Duration(minutes: 5)),
   );
 }

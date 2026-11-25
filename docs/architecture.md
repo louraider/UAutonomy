@@ -1,7 +1,7 @@
 # Архітектура
 
 ```
-app/                Flutter-інтерфейс (Android, Windows; iOS згодом)
+app/                Flutter-інтерфейс (Android, Windows, iOS)
   rust/             crate-міст для flutter_rust_bridge (лише перетворення типів)
   rust_builder/     cargokit: збирає Rust під кожну платформу разом із Flutter
 core/               Cargo workspace

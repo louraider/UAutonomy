@@ -148,6 +148,15 @@ class _ShareScreenState extends State<ShareScreen> {
         _info = sharingStatus();
         _firewall = null;
       });
+      // iPhone призупиняє застосунок, коли гасне екран, і сервер обміну
+      // перестає відповідати. Поки роздаємо, не даємо екрану згаснути.
+      if (Platform.isIOS) {
+        unawaited(
+          _channel
+              .invokeMethod<void>('keepAwake', {'on': _info.running})
+              .catchError((_) {}),
+        );
+      }
       if (_info.running) {
         // Не тримаємо кнопку вимкненою, поки PowerShell читає правила.
         unawaited(_checkFirewallSoon());
@@ -172,7 +181,14 @@ class _ShareScreenState extends State<ShareScreen> {
           Text('Поділитися без інтернету', style: t.titleMedium),
           const SizedBox(height: 12),
           Text(
-            Platform.isAndroid || Platform.isIOS
+            Platform.isIOS
+                ? '1. Увімкніть «Особистий хотспот» на цьому iPhone або підключіться до спільного Wi-Fi.\n'
+                      '2. Натисніть «Увімкнути обмін» і не закривайте застосунок: iPhone зупиняє '
+                      'обмін, щойно застосунок іде у фон. Поки обмін увімкнено, екран не гасне.\n'
+                      '3. Інший телефон сканує QR-код камерою й відкриває бібліотеку в браузері, '
+                      'може завантажити пакети. Пошук, картки й офлайн-карти завантажених областей '
+                      'працюють у браузері. Застосунок для Android роздає Android-телефон чи комп\'ютер.'
+                : Platform.isAndroid
                 ? '1. Увімкніть точку доступу на цьому телефоні або підключіться до спільного Wi-Fi.\n'
                       '2. Натисніть «Увімкнути обмін».\n'
                       '3. Інший телефон сканує QR-код камерою й відкриває бібліотеку в браузері, '
