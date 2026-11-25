@@ -39,9 +39,9 @@ Future<void> installFromFile(String dataDir) async {
   final client = HttpClient();
   final req = await client.getUrl(Uri.parse(officialCatalogUrl));
   final resp = await req.close();
-  final cat =
-      jsonDecode(await resp.transform(utf8.decoder).join())
-          as Map<String, dynamic>;
+  final cat = jsonDecode(
+    await resp.transform(utf8.decoder).join(),
+  ) as Map<String, dynamic>;
   client.close();
   final pack = (cat['packs'] as List).cast<Map<String, dynamic>>().firstWhere(
     (p) => p['id'] == packId,

@@ -22,21 +22,24 @@ void main() {
   test('дозвіл для загальнодоступних чи будь-яких мереж', () {
     // Так на ПК розробника: два правила Public Allow (TCP і UDP).
     expect(
-      assessFirewall(['Public'], const [
-        FirewallRule(allow: true, profile: 'Public'),
-      ]),
+      assessFirewall(
+        ['Public'],
+        const [FirewallRule(allow: true, profile: 'Public')],
+      ),
       FirewallVerdict.ok,
     );
     expect(
-      assessFirewall(['Public', 'DomainAuthenticated'], const [
-        FirewallRule(allow: true, profile: 'Any'),
-      ]),
+      assessFirewall(
+        ['Public', 'DomainAuthenticated'],
+        const [FirewallRule(allow: true, profile: 'Any')],
+      ),
       FirewallVerdict.ok,
     );
     expect(
-      assessFirewall(['DomainAuthenticated'], const [
-        FirewallRule(allow: true, profile: 'Domain, Private'),
-      ]),
+      assessFirewall(
+        ['DomainAuthenticated'],
+        const [FirewallRule(allow: true, profile: 'Domain, Private')],
+      ),
       FirewallVerdict.ok,
     );
   });
@@ -49,26 +52,25 @@ void main() {
 
   test('блокування сильніше за дозвіл', () {
     expect(
-      assessFirewall(['Private'], const [
-        FirewallRule(allow: true, profile: 'Any'),
-        FirewallRule(allow: false, profile: 'Private'),
-      ]),
+      assessFirewall(
+        ['Private'],
+        const [
+          FirewallRule(allow: true, profile: 'Any'),
+          FirewallRule(allow: false, profile: 'Private'),
+        ],
+      ),
       FirewallVerdict.blocked,
     );
   });
 
-  test(
-    'на Windows справді читає профіль мережі й правила',
-    () async {
-      const exe = String.fromEnvironment('FIREWALL_EXE');
-      final s = await checkWindowsFirewall(
-        exe: exe.isEmpty ? Platform.resolvedExecutable : exe,
-      );
-      expect(s, isNotNull);
-      // ignore: avoid_print
-      print('FIREWALL ${s!.verdict} ${s.categories}');
-      expect(s.categories, isNotEmpty);
-    },
-    skip: !Platform.isWindows,
-  );
+  test('на Windows справді читає профіль мережі й правила', () async {
+    const exe = String.fromEnvironment('FIREWALL_EXE');
+    final s = await checkWindowsFirewall(
+      exe: exe.isEmpty ? Platform.resolvedExecutable : exe,
+    );
+    expect(s, isNotNull);
+    // ignore: avoid_print
+    print('FIREWALL ${s!.verdict} ${s.categories}');
+    expect(s.categories, isNotEmpty);
+  }, skip: !Platform.isWindows);
 }
