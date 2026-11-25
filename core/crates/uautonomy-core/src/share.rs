@@ -128,10 +128,31 @@ fn default_route_ip() -> Option<IpAddr> {
     (!ip.is_unspecified() && !ip.is_loopback()).then_some(ip)
 }
 
-fn is_virtual_iface(name: &str) -> bool {
+/// Тунелі VPN: навіть як маршрут за замовчуванням інший телефон до них не дістанеться.
+fn is_vpn_iface(name: &str) -> bool {
     let n = name.to_lowercase();
     [
-        "vethernet",
+        "tailscale",
+        "zerotier",
+        "wireguard",
+        "tun",
+        "tap",
+        "utun",
+        "vpn",
+    ]
+    .iter()
+    .any(|v| n.contains(v))
+}
+
+fn is_virtual_iface(name: &str) -> bool {
+    let n = name.to_lowercase();
+    // Hyper-V: «vEthernet (WSL…)» і «vEthernet (Default Switch)» — внутрішні
+    // NAT-мережі, а зовнішній комутатор («vEthernet (New Virtual Switch)»)
+    // місток на справжню мережеву карту: це і є адреса в локальній мережі.
+    if n.starts_with("vethernet") {
+        return n.contains("wsl") || n.contains("default switch") || is_vpn_iface(&n);
+    }
+    [
         "wsl",
         "hyper-v",
         "virtualbox",
@@ -165,7 +186,7 @@ fn rank_ips(ifaces: Vec<(String, IpAddr)>, default: Option<IpAddr>) -> Vec<IpAdd
                 return None;
             }
             let o = v4.octets();
-            let rank = if Some(ip) == default && !is_virtual_iface(&name) {
+            let rank = if Some(ip) == default && !is_vpn_iface(&name) {
                 0
             } else if is_virtual_iface(&name) {
                 9
@@ -182,6 +203,11 @@ fn rank_ips(ifaces: Vec<(String, IpAddr)>, default: Option<IpAddr>) -> Vec<IpAdd
         })
         .collect();
     v.sort_by_key(|(r, _)| *r);
+    // Внутрішні мережі (WSL, Hyper-V Default Switch, Docker) лише плутають
+    // людину: показуємо їх, тільки коли справжньої мережі немає.
+    if v.iter().any(|(r, _)| *r < 9) {
+        v.retain(|(r, _)| *r < 9);
+    }
     let mut out: Vec<IpAddr> = Vec::new();
     for (_, ip) in v {
         if !out.contains(&ip) {
@@ -845,10 +871,7 @@ mod tests {
             ("Ethernet".to_string(), ip("10.10.10.32")),
             ("Ethernet 2".to_string(), ip("169.254.10.1")),
         ];
-        assert_eq!(
-            rank_ips(ifaces.clone(), None),
-            vec![ip("10.10.10.32"), ip("172.26.192.1")]
-        );
+        assert_eq!(rank_ips(ifaces.clone(), None), vec![ip("10.10.10.32")]);
         assert_eq!(
             rank_ips(ifaces, Some(ip("10.10.10.32")))[0],
             ip("10.10.10.32")
@@ -858,5 +881,33 @@ mod tests {
             ("ap0".to_string(), ip("192.168.43.1")),
         ];
         assert_eq!(rank_ips(hotspot, None)[0], ip("192.168.43.1"));
+    }
+
+    /// ПК Іллі: справжня мережа на зовнішньому комутаторі Hyper-V.
+    #[test]
+    fn hyperv_external_switch_is_lan() {
+        let ip = |s: &str| s.parse::<IpAddr>().unwrap();
+        let ifaces = vec![
+            ("vEthernet (WSL)".to_string(), ip("192.168.0.1")),
+            ("vEthernet (Default Switch)".to_string(), ip("172.26.192.1")),
+            (
+                "vEthernet (New Virtual Switch)".to_string(),
+                ip("10.10.10.32"),
+            ),
+        ];
+        assert_eq!(rank_ips(ifaces.clone(), None), vec![ip("10.10.10.32")]);
+        assert_eq!(
+            rank_ips(ifaces, Some(ip("10.10.10.32")))[0],
+            ip("10.10.10.32")
+        );
+        // Лише WSL: краще показати її, ніж нічого.
+        let only = vec![("vEthernet (WSL)".to_string(), ip("192.168.0.1"))];
+        assert_eq!(rank_ips(only, None), vec![ip("192.168.0.1")]);
+        // VPN як маршрут за замовчуванням не стає першою адресою.
+        let vpn = vec![
+            ("WireGuard Tunnel".to_string(), ip("10.8.0.2")),
+            ("Wi-Fi".to_string(), ip("192.168.1.20")),
+        ];
+        assert_eq!(rank_ips(vpn, Some(ip("10.8.0.2")))[0], ip("192.168.1.20"));
     }
 }

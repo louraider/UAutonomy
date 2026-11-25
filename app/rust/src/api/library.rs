@@ -205,8 +205,25 @@ pub fn document(key: String) -> Option<DocView> {
     if let Some(rest) = key.strip_prefix("zim:") {
         let (pack, path) = rest.split_once('/')?;
         let z = s.library.zim(pack)?;
-        let e = z.get(path)?;
-        let (mime, data) = z.content(&e).ok()?;
+        // Посилання часто ведуть на перенаправлення («Інфаркт» → «Інфаркт
+        // міокарда»): назва й база відносних посилань — від цільової статті.
+        let mut e = z.resolve(&z.get(path)?).ok()?;
+        let (mut mime, mut data) = z.content(&e).ok()?;
+        // Kiwix робить частину перенаправлень HTML-сторінками з meta refresh.
+        for _ in 0..3 {
+            let Some(next) = mime
+                .starts_with("text/html")
+                .then(|| text::html_refresh_target(&String::from_utf8_lossy(&data)))
+                .flatten()
+                .and_then(|t| text::resolve_zim_link(&e.url, &t))
+                .and_then(|p| z.get(&p))
+                .and_then(|n| z.resolve(&n).ok())
+            else {
+                break;
+            };
+            (mime, data) = z.content(&next).ok()?;
+            e = next;
+        }
         let raw = String::from_utf8_lossy(&data);
         let body = if mime.starts_with("text/html") {
             let base = e.url.clone();

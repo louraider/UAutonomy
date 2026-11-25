@@ -1,9 +1,11 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/services.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:uautonomy/screens/common.dart';
+import 'package:uautonomy/share/windows_firewall.dart';
 import 'package:uautonomy/src/rust/api/share.dart';
 
 const _channel = MethodChannel('org.uautonomy/app');
@@ -20,6 +22,94 @@ class ShareScreen extends StatefulWidget {
 class _ShareScreenState extends State<ShareScreen> {
   ShareInfo _info = sharingStatus();
   bool _busy = false;
+  FirewallStatus? _firewall;
+  bool _fixing = false;
+
+  @override
+  void initState() {
+    super.initState();
+    if (_info.running) _checkFirewall();
+  }
+
+  Future<void> _checkFirewall() async {
+    if (!Platform.isWindows) return;
+    // Запит Windows про дозвіл з'являється, коли сервер починає слухати:
+    // даємо людині мить відповісти, а тоді читаємо правила.
+    final s = await checkWindowsFirewall();
+    if (mounted && _info.running) setState(() => _firewall = s);
+  }
+
+  Future<void> _checkFirewallSoon() async {
+    await Future<void>.delayed(const Duration(seconds: 2));
+    if (mounted && _info.running) await _checkFirewall();
+  }
+
+  Future<void> _fixFirewall() async {
+    setState(() => _fixing = true);
+    final ok = await allowInWindowsFirewall();
+    await _checkFirewall();
+    if (!mounted) return;
+    setState(() => _fixing = false);
+    if (!ok) {
+      showError(
+        context,
+        'Брандмауер не змінено. Потрібна згода у вікні Windows '
+        '(обліковий запис адміністратора).',
+      );
+    }
+  }
+
+  static const _blockedText =
+      'Брандмауер Windows не пускає інші пристрої до обміну: телефон не '
+      'відкриє сторінку.';
+
+  Widget _firewallNote(BuildContext context) {
+    final f = _firewall;
+    if (f == null || f.verdict == FirewallVerdict.ok) {
+      return const SizedBox.shrink();
+    }
+    final blocked = f.verdict == FirewallVerdict.blocked;
+    final where = f.publicNetwork
+        ? 'Ця мережа позначена у Windows як загальнодоступна. '
+        : '';
+    return Card(
+      color: Theme.of(context).colorScheme.errorContainer,
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              blocked
+                  ? '$where$_blockedText'
+                  : 'Брандмауер Windows ще не має дозволу для обміну. Якщо '
+                        "з'явилося вікно із запитом, позначте обидві галочки "
+                        '(приватні й загальнодоступні мережі).',
+            ),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                FilledButton(
+                  onPressed: _fixing ? null : _fixFirewall,
+                  child: Text(
+                    _fixing
+                        ? 'Чекаю на згоду…'
+                        : 'Дозволити в локальній мережі',
+                  ),
+                ),
+                OutlinedButton(
+                  onPressed: _fixing ? null : _checkFirewall,
+                  child: const Text('Перевірити ще раз'),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 
   Future<List<String>> _appFiles() async {
     if (!Platform.isAndroid) return const [];
@@ -50,7 +140,14 @@ class _ShareScreenState extends State<ShareScreen> {
           appFiles: await _appFiles(),
         );
       }
-      setState(() => _info = sharingStatus());
+      setState(() {
+        _info = sharingStatus();
+        _firewall = null;
+      });
+      if (_info.running) {
+        // Не тримаємо кнопку вимкненою, поки PowerShell читає правила.
+        unawaited(_checkFirewallSoon());
+      }
     } catch (e) {
       if (mounted) showError(context, 'Не вдалося увімкнути обмін: $e');
     } finally {
@@ -77,8 +174,8 @@ class _ShareScreenState extends State<ShareScreen> {
               : '1. Підключіть цей комп\'ютер і телефон до одного Wi-Fi чи роутера '
                     '(або підключіть комп\'ютер до точки доступу телефона).\n'
                     '2. Натисніть «Увімкнути обмін». Якщо Windows запитає дозвіл для '
-                    'брандмауера, дозвольте доступ у приватних мережах, інакше телефон '
-                    'не відкриє сторінку.\n'
+                    'брандмауера, позначте обидві галочки (приватні й загальнодоступні '
+                    'мережі), інакше телефон може не відкрити сторінку.\n'
                     '3. Телефон сканує QR-код камерою й відкриває бібліотеку в браузері, '
                     'може завантажити застосунок і пакети. На iPhone у браузері працюють '
                     'пошук, картки й офлайн-карти завантажених областей.',
@@ -89,6 +186,10 @@ class _ShareScreenState extends State<ShareScreen> {
           icon: Icon(_info.running ? Icons.stop : Icons.wifi_tethering),
           label: Text(_info.running ? 'Вимкнути обмін' : 'Увімкнути обмін'),
         ),
+        if (_info.running && _firewall != null) ...[
+          const SizedBox(height: 16),
+          _firewallNote(context),
+        ],
         const SizedBox(height: 24),
         if (_info.running && url == null)
           const Text(
