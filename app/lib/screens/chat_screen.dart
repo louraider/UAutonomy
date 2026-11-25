@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
 import 'package:material_ui/material_ui.dart';
@@ -127,6 +129,9 @@ class _ChatScreenState extends State<ChatScreen> {
       final dir = '${await appDataDir()}/models';
       final path = await localPathFor(res.single, dir);
       final m = await importModelFile(path: path);
+      // На iOS вибраний файл спершу копіюється в тимчасову теку: модель
+      // уже в теці моделей, тож гігабайтну копію прибираємо.
+      if (Platform.isIOS) await clearPickedCopies();
       _refresh();
       await _load(m);
     } catch (e) {

@@ -420,6 +420,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "0.20.5"
+  llamadart_llama_cpp_flutter:
+    dependency: "direct main"
+    description:
+      name: llamadart_llama_cpp_flutter
+      sha256: b0f65550f0e11dfbbe805d3de8184dd998a9b964c64b961cb66b6ef895eae76e
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.20.8"
   logging:
     dependency: transitive
     description:

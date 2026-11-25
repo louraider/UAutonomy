@@ -1,6 +1,6 @@
 # Застосунок UAutonomy (Flutter)
 
-Інтерфейс для Android і Windows (iOS згодом). Логіка в Rust-ядрі `../core`, підключеному через `flutter_rust_bridge` (crate-міст у `rust/`, збірка через cargokit у `rust_builder/`).
+Інтерфейс для Android, Windows та iOS (див. ../docs/ios.md). Логіка в Rust-ядрі `../core`, підключеному через `flutter_rust_bridge` (crate-міст у `rust/`, збірка через cargokit у `rust_builder/`).
 
 ```bash
 flutter pub get

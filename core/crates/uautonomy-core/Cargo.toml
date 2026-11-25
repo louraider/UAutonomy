@@ -18,10 +18,17 @@ lzma-rs.workspace = true
 tar.workspace = true
 tiny_http.workspace = true
 ureq.workspace = true
-sysinfo.workspace = true
 if-addrs.workspace = true
 flate2.workspace = true
 ed25519-dalek.workspace = true
+
+# sysinfo 0.37 не збирається під iOS (proc_pidinfo є лише в macOS), тож там
+# пам'ять і місце читаємо напряму через libc (див. hardware.rs).
+[target.'cfg(not(target_os = "ios"))'.dependencies]
+sysinfo.workspace = true
+
+[target.'cfg(target_os = "ios")'.dependencies]
+libc = "0.2"
 
 [dev-dependencies]
 tempfile.workspace = true

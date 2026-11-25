@@ -172,6 +172,9 @@ class _PacksScreenState extends State<PacksScreen> {
         await File(path).delete();
       } catch (_) {}
     }
+    // iOS дає копію вибраного файлу в тимчасовій теці застосунку: пакет
+    // уже імпортовано, тож копію (сотні мегабайтів) прибираємо одразу.
+    if (Platform.isIOS) await clearPickedCopies();
   }
 
   Future<void> _importFolder() async {
@@ -185,10 +188,14 @@ class _PacksScreenState extends State<PacksScreen> {
 
   Future<void> _export(PackView p) async {
     // На Android пишемо в теку застосунку на картці пам'яті (видно через
-    // USB-кабель у Android/data/org.uautonomy.app/files); на ПК питаємо теку.
+    // USB-кабель у Android/data/org.uautonomy.app/files); на iPhone у
+    // Документи застосунку (видно у «Файли» → «На iPhone» → «Автономія»
+    // і через Finder на Mac); на ПК питаємо теку.
     String? dir;
     if (Platform.isAndroid) {
       dir = (await getExternalStorageDirectory())?.path;
+    } else if (Platform.isIOS) {
+      dir = (await getApplicationDocumentsDirectory()).path;
     } else {
       // ignore: deprecated_member_use
       dir = await FilePicker.getDirectoryPath(
@@ -388,7 +395,9 @@ class _PacksScreenState extends State<PacksScreen> {
                   icon: const Icon(Icons.usb),
                   label: const Text('З флешки чи файлу'),
                 ),
-                if (!Platform.isAndroid)
+                // Теку на телефоні не вибрати: Android і iOS дають доступ
+                // лише до окремих файлів.
+                if (!Platform.isAndroid && !Platform.isIOS)
                   OutlinedButton.icon(
                     onPressed: _busyId != null ? null : _importFolder,
                     icon: const Icon(Icons.folder_open),

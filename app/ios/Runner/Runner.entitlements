@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- Модель ШІ (GGUF, ~3 ГБ) потребує більше пам'яті, ніж iOS дає
+	     застосунку за замовчуванням. Capability «Increased Memory Limit»
+	     вмикається для App ID автоматично при підписі в Xcode. -->
+	<key>com.apple.developer.kernel.increased-memory-limit</key>
+	<true/>
+</dict>
+</plist>
