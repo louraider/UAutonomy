@@ -172,6 +172,22 @@ pub fn html_to_text(html: &str) -> String {
     while i < bytes.len() {
         if bytes[i] == b'<' {
             let rest = &html[i..];
+            // Інфобокси, навігація й примітки ([4][3]) лише засмічують уривки для ШІ.
+            let tag_end = rest.find('>').map(|p| p + 1).unwrap_or(rest.len());
+            let raw = &rest[..tag_end];
+            let name: String = raw[1..]
+                .chars()
+                .take_while(|c| c.is_ascii_alphanumeric())
+                .collect::<String>()
+                .to_ascii_lowercase();
+            if !name.is_empty()
+                && !raw.ends_with("/>")
+                && !VOID.contains(&name.as_str())
+                && (name == "sup" || noise_class(raw))
+            {
+                i = skip_element(html, i + tag_end, &name);
+                continue;
+            }
             let lower: String = rest.chars().take(8).collect::<String>().to_lowercase();
             for skip in ["script", "style", "head"] {
                 if lower.starts_with(&format!("<{skip}")) {
@@ -471,6 +487,16 @@ pub fn html_to_markdown(html: &str, link: &dyn Fn(&str) -> Option<String>) -> St
             .take_while(|c| c.is_ascii_alphanumeric())
             .collect::<String>()
             .to_ascii_lowercase();
+        // Зображень застосунок не показує, а підпис без зображення висить
+        // серед тексту незрозумілим абзацом: пропускаємо `<figure>` цілком.
+        if !closing
+            && !raw.ends_with("/>")
+            && !VOID.contains(&name.as_str())
+            && (name == "figure" || noise_class(raw))
+        {
+            i = skip_element(html, i, &name);
+            continue;
+        }
         if !closing && SKIP.contains(&name.as_str()) && !raw.ends_with("/>") {
             let close = format!("</{name}");
             let lower = html[i..].to_ascii_lowercase();
@@ -564,6 +590,98 @@ pub fn html_to_markdown(html: &str, link: &dyn Fn(&str) -> Option<String>) -> St
         clean.push('\n');
     }
     clean.trim_end().to_string()
+}
+
+/// Сторінка-перенаправлення Kiwix (`<meta http-equiv="refresh" content="0;URL='./Ціль#якір'">`):
+/// повертає `href` цілі, щоб застосунок відкрив саму статтю.
+pub fn html_refresh_target(html: &str) -> Option<String> {
+    if html.len() > 4096 {
+        return None;
+    }
+    let lower = html.to_ascii_lowercase();
+    let p = lower
+        .find("http-equiv=\"refresh\"")
+        .or_else(|| lower.find("http-equiv='refresh'"))?;
+    let tag_start = lower[..p].rfind('<')?;
+    let tag_end = tag_start + lower[tag_start..].find('>')?;
+    let content = attr(&html[tag_start..=tag_end], "content")?;
+    let u = content.to_ascii_lowercase().find("url=")?;
+    let target = content[u + 4..].trim().trim_matches(['\'', '"']);
+    (!target.is_empty()).then(|| decode_entities(target))
+}
+
+/// Теги без закривальної пари.
+const VOID: &[&str] = &[
+    "br", "img", "hr", "input", "meta", "link", "source", "track", "wbr", "col", "area",
+];
+
+/// Блоки вікі, що в застосунку лише заважають: інфобокси (на телефоні
+/// розгортаються в стовпчик на весь перший екран), навігаційні шаблони,
+/// службові плашки, посилання на Вікісховище, списки приміток.
+fn noise_class(tag: &str) -> bool {
+    const NOISE: &[&str] = &[
+        "infobox",
+        "navbox",
+        "metadata",
+        "ambox",
+        "sistersitebox",
+        "mw-empty-elt",
+        "noprint",
+        "mw-references-wrap",
+        "references",
+        "reflist",
+        "mw-editsection",
+        // Службові повідомлення шаблонів цитування: «{{cite web}}: Обслуговування CS1…».
+        "citation-comment",
+        "cs1-maint",
+        "cs1-visible-error",
+    ];
+    let Some(class) = attr(tag, "class") else {
+        return false;
+    };
+    class.split_ascii_whitespace().any(|c| {
+        NOISE
+            .iter()
+            .any(|n| c.eq_ignore_ascii_case(n) || c.starts_with(&format!("{n}-")))
+    })
+}
+
+/// Пропускає елемент `name`, що відкрився перед `from`, з урахуванням
+/// вкладених елементів того самого імені (таблиця в таблиці). Повертає
+/// позицію після його закривального тега.
+fn skip_element(html: &str, from: usize, name: &str) -> usize {
+    let lower = html[from..].to_ascii_lowercase();
+    let open = format!("<{name}");
+    let close = format!("</{name}");
+    let mut depth = 1usize;
+    let mut pos = 0usize;
+    while depth > 0 {
+        let o = lower[pos..].find(&open).map(|p| pos + p);
+        let c = lower[pos..].find(&close).map(|p| pos + p);
+        match (o, c) {
+            (Some(o), Some(c)) if o < c => {
+                // `<table` не має збігатися з `<tablex`.
+                let next = lower
+                    .as_bytes()
+                    .get(o + open.len())
+                    .copied()
+                    .unwrap_or(b'>');
+                if !next.is_ascii_alphanumeric() {
+                    depth += 1;
+                }
+                pos = o + open.len();
+            }
+            (_, Some(c)) => {
+                depth -= 1;
+                pos = c + close.len();
+            }
+            _ => return html.len(),
+        }
+    }
+    lower[pos..]
+        .find('>')
+        .map(|q| from + pos + q + 1)
+        .unwrap_or(html.len())
 }
 
 /// Значення атрибута тега (`href="…"` чи `href='…'`).
@@ -698,6 +816,58 @@ mod tests {
     }
 
     #[test]
+    fn wiki_noise_is_dropped() {
+        let html = "<html><body><h1>Опік</h1>\
+            <table class=\"infobox vcard\"><tr><td><table><tr><td>вкладена</td></tr></table></td></tr>\
+            <tr><th>Ускладнення</th><td>Інфікування</td></tr></table>\
+            <p>О́пік — різновид травми<sup class=reference><a href=\"#cite_note-4\">[4]</a></sup>.</p>\
+            <div class=\"navbox\"><div>Хвороби шкіри</div></div>\
+            <div role=note class=\"sistersitebox plainlinks\">Вікісховище</div>\
+            <figure typeof=\"mw:File/Thumb\"><img src=\"a.jpg\"><figcaption>Підпис без фото</figcaption></figure>\
+            <p>Текст<span class=\"cs1-maint citation-comment\"><code class=cs1-code>{{cite web}}</code>: Обслуговування CS1</span></p>\
+            <ol class=references><li>Джерело 4</li></ol><p>Кінець</p></body></html>";
+        let md = html_to_markdown(html, &|_| None);
+        assert!(md.starts_with("# Опік\n\nО́пік — різновид травми."), "{md}");
+        for junk in [
+            "вкладена",
+            "Ускладнення",
+            "[4]",
+            "Хвороби шкіри",
+            "Вікісховище",
+            "Джерело 4",
+            "Підпис без фото",
+            "{{",
+            "CS1",
+        ] {
+            assert!(!md.contains(junk), "{junk}: {md}");
+        }
+        assert!(md.ends_with("Кінець"), "{md}");
+        let t = html_to_text(html);
+        assert!(t.contains("різновид травми."), "{t}");
+        for junk in [
+            "вкладена",
+            "Ускладнення",
+            "[4]",
+            "Хвороби шкіри",
+            "Джерело 4",
+        ] {
+            assert!(!t.contains(junk), "{junk}: {t}");
+        }
+    }
+
+    #[test]
+    fn kiwix_refresh_page_is_followed() {
+        let html = "<html><head><meta http-equiv=\"refresh\" content=\"0;URL='./ATC_код_J#(J01)_Антибактеріальні'\" /></head><body><a href=\"./ATC_код_J#(J01)\">ATC-код J01</a></body></html>";
+        let t = html_refresh_target(html).unwrap();
+        assert_eq!(t, "./ATC_код_J#(J01)_Антибактеріальні");
+        assert_eq!(
+            resolve_zim_link("ATC-код_J01", &t).as_deref(),
+            Some("ATC_код_J")
+        );
+        assert_eq!(html_refresh_target("<p>Звичайна стаття</p>"), None);
+    }
+
+    #[test]
     fn html_is_cleaned() {
         let t = html_to_text(
             "<html><head><style>p{}</style></head><body><h1>Вода</h1><p>Кип&#39;ятіть&nbsp;1&nbsp;хв &amp; більше</p><script>x()</script></body></html>",
@@ -743,7 +913,7 @@ mod tests {
         });
         assert_eq!(
             md,
-            "# Tourniquet\n\nSpecialty · [Emergency medicine](zim:p/A/Emergency_medicine)\n\nA **tourniquet** is a device.\n\n## Uses\n\n- One\n- Two\n\next"
+            "# Tourniquet\n\nA **tourniquet** is a device.\n\n## Uses\n\n- One\n- Two\n\next"
         );
         assert_eq!(
             resolve_zim_link("Tourniquet", "../A/Foo%20bar#x").as_deref(),

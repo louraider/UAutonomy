@@ -459,6 +459,7 @@ fn render_check(zim: &uautonomy_core::zim::Zim, n: usize) -> R {
     let step = (all.len() / n).max(1);
     let started = std::time::Instant::now();
     let (mut done, mut empty, mut html_left, mut links, mut dead) = (0, 0, 0, 0, 0);
+    let mut redirects = 0;
     let mut examples: Vec<String> = Vec::new();
     let mut slowest = (0u128, String::new());
     for e in all.iter().step_by(step).take(n) {
@@ -468,6 +469,20 @@ fn render_check(zim: &uautonomy_core::zim::Zim, n: usize) -> R {
             continue;
         }
         let raw = String::from_utf8_lossy(&data);
+        // Сторінки-перенаправлення Kiwix застосунок проходить наскрізь.
+        if let Some(t) = text::html_refresh_target(&raw) {
+            let ok = text::resolve_zim_link(&e.url, &t)
+                .and_then(|p| zim.get(&p))
+                .is_some();
+            redirects += 1;
+            if !ok {
+                dead += 1;
+                if examples.len() < 12 {
+                    examples.push(format!("перенаправлення в нікуди: {} → {t}", e.title));
+                }
+            }
+            continue;
+        }
         let targets = std::cell::RefCell::new(Vec::new());
         let md = text::html_to_markdown(&raw, &|href| {
             let p = text::resolve_zim_link(&e.url, href)?;
@@ -508,7 +523,7 @@ fn render_check(zim: &uautonomy_core::zim::Zim, n: usize) -> R {
         }
     }
     println!(
-        "рендер: {done} статей за {} мс (найдовша {} мс: {}); порожніх {empty}, із залишками HTML {html_left}; посилань {links}, мертвих {dead}",
+        "рендер: {done} статей за {} мс (найдовша {} мс: {}); порожніх {empty}, із залишками HTML {html_left}; посилань {links}, мертвих {dead}; HTML-перенаправлень {redirects}",
         started.elapsed().as_millis(),
         slowest.0,
         slowest.1

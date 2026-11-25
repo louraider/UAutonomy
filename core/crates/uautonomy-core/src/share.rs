@@ -203,6 +203,11 @@ fn rank_ips(ifaces: Vec<(String, IpAddr)>, default: Option<IpAddr>) -> Vec<IpAdd
         })
         .collect();
     v.sort_by_key(|(r, _)| *r);
+    // Внутрішні мережі (WSL, Hyper-V Default Switch, Docker) лише плутають
+    // людину: показуємо їх, тільки коли справжньої мережі немає.
+    if v.iter().any(|(r, _)| *r < 9) {
+        v.retain(|(r, _)| *r < 9);
+    }
     let mut out: Vec<IpAddr> = Vec::new();
     for (_, ip) in v {
         if !out.contains(&ip) {
@@ -866,10 +871,7 @@ mod tests {
             ("Ethernet".to_string(), ip("10.10.10.32")),
             ("Ethernet 2".to_string(), ip("169.254.10.1")),
         ];
-        assert_eq!(
-            rank_ips(ifaces.clone(), None),
-            vec![ip("10.10.10.32"), ip("172.26.192.1")]
-        );
+        assert_eq!(rank_ips(ifaces.clone(), None), vec![ip("10.10.10.32")]);
         assert_eq!(
             rank_ips(ifaces, Some(ip("10.10.10.32")))[0],
             ip("10.10.10.32")
@@ -893,11 +895,14 @@ mod tests {
                 ip("10.10.10.32"),
             ),
         ];
-        assert_eq!(rank_ips(ifaces.clone(), None)[0], ip("10.10.10.32"));
+        assert_eq!(rank_ips(ifaces.clone(), None), vec![ip("10.10.10.32")]);
         assert_eq!(
             rank_ips(ifaces, Some(ip("10.10.10.32")))[0],
             ip("10.10.10.32")
         );
+        // Лише WSL: краще показати її, ніж нічого.
+        let only = vec![("vEthernet (WSL)".to_string(), ip("192.168.0.1"))];
+        assert_eq!(rank_ips(only, None), vec![ip("192.168.0.1")]);
         // VPN як маршрут за замовчуванням не стає першою адресою.
         let vpn = vec![
             ("WireGuard Tunnel".to_string(), ip("10.8.0.2")),

@@ -80,7 +80,7 @@ Future<FirewallStatus?> checkWindowsFirewall({String? exe}) async {
   final script =
       r'$ErrorActionPreference="SilentlyContinue";'
       r'$c=@(Get-NetConnectionProfile|ForEach-Object{"$($_.NetworkCategory)"});'
-      '\$r=@(Get-NetFirewallApplicationFilter -Program ${_psQuote(program)}|'
+      '\$r=@(Get-NetFirewallApplicationFilter -ErrorAction SilentlyContinue -Program ${_psQuote(program)}|'
       r'Get-NetFirewallRule|Where-Object{$_.Direction -eq "Inbound" -and $_.Enabled -eq "True"}|'
       r'ForEach-Object{@{a="$($_.Action)";p="$($_.Profile)"}});'
       r'@{categories=$c;rules=$r}|ConvertTo-Json -Compress -Depth 3';
@@ -91,8 +91,11 @@ Future<FirewallStatus?> checkWindowsFirewall({String? exe}) async {
       '-Command',
       script,
     ]).timeout(const Duration(seconds: 20));
-    if (res.exitCode != 0) return null;
-    final j = jsonDecode(res.stdout as String) as Map<String, dynamic>;
+    // Для exe без правил Get-NetFirewallApplicationFilter пише помилку в
+    // stderr, але JSON однаково друкує: дивимося лише на stdout.
+    final out = (res.stdout as String).trim();
+    if (out.isEmpty) return null;
+    final j = jsonDecode(out) as Map<String, dynamic>;
     List<dynamic> list(Object? v) => v == null
         ? const []
         : v is List
