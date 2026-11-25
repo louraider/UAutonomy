@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/services.dart';
@@ -35,7 +36,12 @@ class _ShareScreenState extends State<ShareScreen> {
     // Запит Windows про дозвіл з'являється, коли сервер починає слухати:
     // даємо людині мить відповісти, а тоді читаємо правила.
     final s = await checkWindowsFirewall();
-    if (mounted) setState(() => _firewall = s);
+    if (mounted && _info.running) setState(() => _firewall = s);
+  }
+
+  Future<void> _checkFirewallSoon() async {
+    await Future<void>.delayed(const Duration(seconds: 2));
+    if (mounted && _info.running) await _checkFirewall();
   }
 
   Future<void> _fixFirewall() async {
@@ -139,8 +145,8 @@ class _ShareScreenState extends State<ShareScreen> {
         _firewall = null;
       });
       if (_info.running) {
-        await Future<void>.delayed(const Duration(seconds: 2));
-        await _checkFirewall();
+        // Не тримаємо кнопку вимкненою, поки PowerShell читає правила.
+        unawaited(_checkFirewallSoon());
       }
     } catch (e) {
       if (mounted) showError(context, 'Не вдалося увімкнути обмін: $e');
