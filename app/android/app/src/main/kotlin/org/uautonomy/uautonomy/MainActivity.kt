@@ -1,5 +1,7 @@
 package org.uautonomy.uautonomy
 
+import android.content.Intent
+import android.net.Uri
 import android.os.Build
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
@@ -16,6 +18,20 @@ class MainActivity : FlutterActivity() {
                     // APK збирається окремо під кожну архітектуру; щоб назвати
                     // файл для роздачі, дізнаємося, яку саме встановлено.
                     "apkAbi" -> result.success(installedAbi())
+                    // Сторінка завантаження нової версії у браузері.
+                    "openUrl" -> {
+                        val url = call.argument<String>("url")
+                        if (url == null || !url.startsWith("https://")) {
+                            result.success(false)
+                        } else {
+                            try {
+                                startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
+                                result.success(true)
+                            } catch (e: Exception) {
+                                result.success(false)
+                            }
+                        }
+                    }
                     else -> result.notImplemented()
                 }
             }
