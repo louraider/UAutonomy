@@ -195,7 +195,13 @@ jobs:
       - name: MSIX ставиться і запускається
         shell: pwsh
         run: |
-          dart run msix:create --version $env:MSIX_VERSION --install-certificate true --output-name avtonomiia-test
+          # Тестовий сертифікат пакета msix (пароль 1234) робимо довіреним
+          # самі: msix:create інакше питає згоди в консолі і падає без stdin.
+          $pfx = Get-ChildItem "$env:PUB_CACHE\hosted\pub.dev" -Directory -Filter 'msix-*' |
+            Sort-Object Name | Select-Object -Last 1 |
+            ForEach-Object { Join-Path $_.FullName 'lib\assets\test_certificate.pfx' }
+          Import-PfxCertificate -FilePath $pfx -CertStoreLocation Cert:\LocalMachine\Root -Password (ConvertTo-SecureString 1234 -AsPlainText -Force) | Out-Null
+          dart run msix:create --version $env:MSIX_VERSION --install-certificate false --output-name avtonomiia-test
           if ($LASTEXITCODE -ne 0) { throw "msix:create: код $LASTEXITCODE" }
           $msix = Get-ChildItem build/windows/x64/runner/Release/avtonomiia-test.msix
           "Пакет: $($msix.Length / 1MB) МБ"
