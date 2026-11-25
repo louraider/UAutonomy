@@ -305,8 +305,11 @@ jobs:
           set +e
           flutter build ios --release --no-codesign -v > "$RUNNER_TEMP/ios-build.log" 2>&1
           code=$?
-          grep -E "error:|\*\* BUILD|requires a development team|entitlements" "$RUNNER_TEMP/ios-build.log" | sort -u | head -60
-          [ $code -eq 0 ] || tail -40 "$RUNNER_TEMP/ios-build.log"
+          grep -E "error(\[E[0-9]+\])?:|\*\* BUILD|requires a development team" "$RUNNER_TEMP/ios-build.log" | sort -u | head -80
+          if [ $code -ne 0 ]; then
+            grep -n -A60 "Cargokit BuildTool failed" "$RUNNER_TEMP/ios-build.log" | head -150
+            grep -n -B3 -A25 "^\s*error" "$RUNNER_TEMP/ios-build.log" | head -200
+          fi
           exit $code
       - name: Розмір і вміст збірки
         working-directory: app/build/ios/iphoneos
@@ -319,6 +322,12 @@ jobs:
           mkdir -p Payload && cp -R Runner.app Payload/
           zip -q -r -y avtonomiia-ios-unsigned.ipa Payload
           ls -l avtonomiia-ios-unsigned.ipa
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: uautonomy-ios-build-log
+          path: ${{ runner.temp }}/ios-build.log
+          retention-days: 7
       - uses: actions/upload-artifact@v4
         with:
           name: uautonomy-ios-unsigned
