@@ -6,7 +6,8 @@
     { "source": "/apk", "destination": "https://github.com/louraider/UAutonomy/releases/download/app/avtonomiia.apk", "permanent": false },
     { "source": "/android-32", "destination": "https://github.com/louraider/UAutonomy/releases/download/app/avtonomiia-armeabi-v7a.apk", "permanent": false },
     { "source": "/android-x86", "destination": "https://github.com/louraider/UAutonomy/releases/download/app/avtonomiia-x86_64.apk", "permanent": false },
-    { "source": "/windows", "destination": "https://github.com/louraider/UAutonomy/releases/download/app/avtonomiia-windows-x64.zip", "permanent": false },
+    { "source": "/windows", "destination": "https://github.com/louraider/UAutonomy/releases/download/app/avtonomiia-windows-setup.exe", "permanent": false },
+    { "source": "/windows-zip", "destination": "https://github.com/louraider/UAutonomy/releases/download/app/avtonomiia-windows-x64.zip", "permanent": false },
     { "source": "/sha256", "destination": "https://github.com/louraider/UAutonomy/releases/download/app/SHA256SUMS.txt", "permanent": false },
     { "source": "/catalog.json", "destination": "https://github.com/louraider/UAutonomy/releases/download/packs/catalog.json", "permanent": false },
     { "source": "/github", "destination": "https://github.com/louraider/UAutonomy", "permanent": false }

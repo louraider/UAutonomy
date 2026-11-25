@@ -42,7 +42,7 @@
         </a>
         <a class="dl secondary" id="dl-windows" href="/windows">
           <strong>Для Windows</strong>
-          <span id="size-windows">ZIP-архів, 64-біт</span>
+          <span id="size-windows">Інсталятор, Windows 10 і 11</span>
         </a>
       </div>
       <p class="release-note" id="release-note">Тестова версія. iPhone поки що не підтримується (<a href="#install">див. нижче</a>).</p>
@@ -136,9 +136,9 @@
           <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="13" rx="2"/><path d="M8 21h8M12 17v4"/></svg></div>
           <h3>Windows 10 і 11</h3>
           <ol class="steps">
-            <li>Завантажте <a href="/windows">ZIP-архів</a> і розпакуйте його.</li>
-            <li>Запустіть <code>Avtonomiia\uautonomy.exe</code>.</li>
+            <li>Завантажте <a href="/windows">інсталятор</a> і відкрийте його. Права адміністратора не потрібні.</li>
             <li>Збірка поки без цифрового підпису, тож Windows може показати попередження. Натисніть «Докладніше», потім «Однаково запустити».</li>
+            <li>Після встановлення «Автономія» з’явиться в меню «Пуск» і на робочому столі. Можна й без встановлення: <a href="/windows-zip">ZIP-архів</a>, розпакуйте й запустіть <code>uautonomy.exe</code>.</li>
           </ol>
         </div>
         <div class="card">
@@ -203,7 +203,7 @@
     .then(function (rel) {
       (rel.assets || []).forEach(function (a) {
         if (a.name === 'avtonomiia.apk') document.getElementById('size-android').textContent = 'APK-файл, ' + mb(a.size);
-        if (a.name === 'avtonomiia-windows-x64.zip') document.getElementById('size-windows').textContent = 'ZIP-архів, 64-біт, ' + mb(a.size);
+        if (a.name === 'avtonomiia-windows-setup.exe') document.getElementById('size-windows').textContent = 'Інсталятор, Windows 10 і 11, ' + mb(a.size);
       });
       var d = new Date(rel.published_at || rel.created_at);
       note.textContent = 'Тестова версія від ' + d.toLocaleDateString('uk-UA', { day: 'numeric', month: 'long', year: 'numeric' }) + '. iPhone поки що не підтримується (див. нижче).';
