@@ -116,8 +116,11 @@ class _ShareScreenState extends State<ShareScreen> {
     try {
       final apk = await _channel.invokeMethod<String>('apkPath');
       if (apk == null) return const [];
-      // Віддаємо під зрозумілою назвою.
-      final dest = File('${Directory.systemTemp.path}/avtonomiia.apk');
+      // Віддаємо під зрозумілою назвою з архітектурою: APK збирається
+      // окремо для arm64-v8a, armeabi-v7a і x86_64, а сторінка обміну
+      // підказує за назвою, яким телефонам він підійде.
+      final abi = await _channel.invokeMethod<String>('apkAbi') ?? 'android';
+      final dest = File('${Directory.systemTemp.path}/avtonomiia-$abi.apk');
       final src = File(apk);
       // Копіюємо лише раз: APK важить десятки мегабайтів.
       if (!dest.existsSync() || dest.lengthSync() != src.lengthSync()) {

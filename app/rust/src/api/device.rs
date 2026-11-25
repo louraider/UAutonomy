@@ -207,7 +207,7 @@ pub fn local_models() -> Vec<LocalModel> {
     out
 }
 
-/// Копіює файл моделі (GGUF / LiteRT-LM) у теку застосунку. Так можна
+/// Копіює файл моделі GGUF у теку застосунку. Так можна
 /// випробувати MamayLM, Lapa чи власну донавчену модель без оновлення.
 pub fn import_model_file(path: String) -> anyhow::Result<LocalModel> {
     let a = state::app_ref()?;
@@ -216,8 +216,13 @@ pub fn import_model_file(path: String) -> anyhow::Result<LocalModel> {
         .file_name()
         .map(|n| n.to_string_lossy().into_owned())
         .ok_or_else(|| anyhow::anyhow!("немає імені файлу"))?;
-    let format = ModelFormat::from_file_name(&name)
-        .ok_or_else(|| anyhow::anyhow!("потрібен файл .gguf або .litertlm"))?;
+    let format =
+        ModelFormat::from_file_name(&name).ok_or_else(|| anyhow::anyhow!("потрібен файл .gguf"))?;
+    // Рушій LiteRT-LM не входить у збірку (заради розміру APK, див.
+    // app/pubspec.yaml), тож такий файл однаково не запуститься.
+    if format != ModelFormat::Gguf {
+        anyhow::bail!("моделі LiteRT-LM (.litertlm) поки не підтримуються: потрібен файл .gguf");
+    }
     let dir = a.data_dir.join("models");
     std::fs::create_dir_all(&dir)?;
     let dest = dir.join(&name);

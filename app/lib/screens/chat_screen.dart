@@ -118,9 +118,7 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   Future<void> _importModel() async {
-    final res = await FilePicker.pickFiles(
-      dialogTitle: 'Файл моделі (.gguf або .litertlm)',
-    );
+    final res = await FilePicker.pickFiles(dialogTitle: 'Файл моделі (.gguf)');
     if (res.isEmpty) return;
     setState(() => _loading = true);
     try {

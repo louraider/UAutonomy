@@ -694,9 +694,10 @@ fn index_html(st: &ShareState) -> String {
         if let Some(n) = f.file_name() {
             let n = n.to_string_lossy();
             apps.push_str(&format!(
-                "<li><a href='/app/{}'>{}</a></li>",
+                "<li><a href='/app/{}'>{}</a>{}</li>",
                 url_encode(&n),
-                esc(&n)
+                esc(&n),
+                apk_hint(&n)
             ));
         }
     }
@@ -722,6 +723,21 @@ return `<div class=hit><a href='${href}'>${e(h.title)}</a><br><small>${e(h.snipp
         zim_h = if zims.is_empty() { String::new() } else { format!("<h2>Довідники</h2><ul>{zims}</ul>") },
         apps_h = if apps.is_empty() { String::new() } else { format!("<h2>Встановити застосунок</h2><ul>{apps}</ul>") },
     )
+}
+
+/// APK збирається окремо під кожну архітектуру процесора, і телефон
+/// роздає той, що встановлено на ньому. Підказуємо за назвою файлу, чи
+/// підійде він іншому телефону.
+fn apk_hint(name: &str) -> &'static str {
+    if name.contains("arm64-v8a") {
+        " <small>— для більшості телефонів (64-біт ARM, приблизно з 2017 року)</small>"
+    } else if name.contains("armeabi-v7a") {
+        " <small>— для старих 32-бітних телефонів; на нових може не встановитися</small>"
+    } else if name.contains("x86_64") {
+        " <small>— для Chromebook та емуляторів (x86_64), на звичайний телефон не встановиться</small>"
+    } else {
+        ""
+    }
 }
 
 #[cfg(test)]
@@ -849,6 +865,14 @@ mod tests {
         assert_eq!(c, 200);
         assert!(body.len() > 500_000);
         s.stop();
+    }
+
+    #[test]
+    fn apk_hint_by_abi() {
+        assert!(apk_hint("avtonomiia-arm64-v8a.apk").contains("більшості"));
+        assert!(apk_hint("avtonomiia-armeabi-v7a.apk").contains("32-біт"));
+        assert!(apk_hint("avtonomiia-x86_64.apk").contains("Chromebook"));
+        assert_eq!(apk_hint("avtonomiia.apk"), "");
     }
 
     #[test]
