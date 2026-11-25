@@ -53,6 +53,10 @@ class _ShareScreenState extends State<ShareScreen> {
     }
   }
 
+  static const _blockedText =
+      'Брандмауер Windows не пускає інші пристрої до обміну: телефон не '
+      'відкриє сторінку.';
+
   Widget _firewallNote(BuildContext context) {
     final f = _firewall;
     if (f == null || f.verdict == FirewallVerdict.ok) {
@@ -71,9 +75,7 @@ class _ShareScreenState extends State<ShareScreen> {
           children: [
             Text(
               blocked
-                  ? where +
-                        'Брандмауер Windows не пускає інші пристрої до '
-                            'обміну: телефон не відкриє сторінку.'
+                  ? '$where$_blockedText'
                   : 'Брандмауер Windows ще не має дозволу для обміну. Якщо '
                         "з'явилося вікно із запитом, позначте обидві галочки "
                         '(приватні й загальнодоступні мережі).',

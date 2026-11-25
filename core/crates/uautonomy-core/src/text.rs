@@ -183,7 +183,7 @@ pub fn html_to_text(html: &str) -> String {
             if !name.is_empty()
                 && !raw.ends_with("/>")
                 && !VOID.contains(&name.as_str())
-                && (name == "sup" || noise_class(raw))
+                && (name == "sup" || name == "figure" || noise_class(raw))
             {
                 i = skip_element(html, i + tag_end, &name);
                 continue;
@@ -397,6 +397,22 @@ pub fn markdown_to_plain(md: &str) -> String {
     clean.trim_end().to_string()
 }
 
+/// Кінець адреси посилання: перша `)` поза вкладеними дужками, бо назви
+/// статей Вікіпедії часто мають дужки (`Тканина_(біологія)`).
+pub fn link_target_end(tail: &str) -> Option<usize> {
+    let mut depth = 0usize;
+    for (i, c) in tail.char_indices() {
+        match c {
+            '(' => depth += 1,
+            ')' if depth == 0 => return Some(i),
+            ')' => depth -= 1,
+            '\n' => return None,
+            _ => {}
+        }
+    }
+    None
+}
+
 /// `**жирний**`, `` `код` `` і `[текст](адреса)` → просто текст.
 fn inline_plain(s: &str) -> String {
     let mut out = String::with_capacity(s.len());
@@ -407,7 +423,7 @@ fn inline_plain(s: &str) -> String {
         match after.find("](") {
             Some(e) if !after[..e].contains('[') => {
                 let tail = &after[e + 2..];
-                match tail.find(')') {
+                match link_target_end(tail) {
                     Some(c) => {
                         out.push_str(&after[..e]);
                         rest = &tail[c + 1..];
@@ -865,6 +881,17 @@ mod tests {
             Some("ATC_код_J")
         );
         assert_eq!(html_refresh_target("<p>Звичайна стаття</p>"), None);
+    }
+
+    #[test]
+    fn link_targets_with_parentheses() {
+        let md = "ушкодження глибших [тканин](zim:p/Тканина_(біологія)), таких, як м'язи";
+        assert_eq!(
+            markdown_to_plain(md).trim(),
+            "ушкодження глибших тканин, таких, як м'язи"
+        );
+        assert_eq!(link_target_end("a_(b)_c) d"), Some(7));
+        assert_eq!(link_target_end("без кінця"), None);
     }
 
     #[test]

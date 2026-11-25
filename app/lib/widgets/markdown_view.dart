@@ -253,7 +253,7 @@ List<InlineSpan> inlineSpans(
     if (c == '[') {
       final close = _findClose(s, i + 1);
       if (close != -1 && close + 1 < s.length && s[close + 1] == '(') {
-        final end = s.indexOf(')', close + 2);
+        final end = linkTargetEnd(s, close + 2);
         if (end != -1) {
           flush();
           final label = s.substring(i + 1, close).replaceAll(r'\', '');
@@ -354,4 +354,23 @@ String cleanAiText(String s) {
     return looksMath ? math(inner) : g[0]!;
   });
   return out;
+}
+
+/// Кінець адреси посилання з позиції [from]: перша `)` поза вкладеними
+/// дужками, бо назви статей Вікіпедії часто мають дужки
+/// (`zim:…/Тканина_(біологія)`). -1, якщо адреса не закрита.
+int linkTargetEnd(String s, int from) {
+  var depth = 0;
+  for (var i = from; i < s.length; i++) {
+    final c = s[i];
+    if (c == '(') {
+      depth++;
+    } else if (c == ')') {
+      if (depth == 0) return i;
+      depth--;
+    } else if (c == '\n') {
+      return -1;
+    }
+  }
+  return -1;
 }

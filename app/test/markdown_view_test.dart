@@ -1,3 +1,4 @@
+import 'package:flutter/gestures.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:uautonomy/widgets/markdown_view.dart';
@@ -29,6 +30,21 @@ void main() {
     final text = spans.map((s) => (s as TextSpan).text).join();
     expect(text, 'Див. Опіки і a*b');
     expect(tapped, isNull);
+  });
+
+  test('адреса посилання з дужками (назви статей Вікіпедії)', () {
+    String? tapped;
+    final spans = inlineSpans(
+      'глибших [тканин](zim:p/Тканина_(біологія)), таких',
+      onLink: (t) => tapped = t,
+    );
+    final text = spans.map((s) => (s as TextSpan).text).join();
+    expect(text, 'глибших тканин, таких');
+    final link = spans.whereType<TextSpan>().firstWhere(
+      (s) => s.text == 'тканин',
+    );
+    (link.recognizer! as TapGestureRecognizer).onTap!();
+    expect(tapped, 'zim:p/Тканина_(біологія)');
   });
 
   test('LaTeX у відповідях ШІ стає звичайним текстом', () {
