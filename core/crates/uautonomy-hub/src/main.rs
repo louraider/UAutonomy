@@ -15,7 +15,8 @@
 //! uautonomy-hub sign    <тека-пакета> --key-env PACK_SIGNING_KEY
 //! uautonomy-hub verify  <тека-пакета | catalog.json>     (перевірка вбудованими ключами)
 //! uautonomy-hub regions                            (області для карт, JSON)
-//! uautonomy-hub zim-check <файл.zim> [запит]...      (перевірка читача на справжньому ZIM)
+//! uautonomy-hub zim-check <файл.zim> [запит]... [--render N]  (перевірка читача на справжньому ZIM;
+//!                                                   --render: N статей у Markdown, як у застосунку)
 //! uautonomy-hub rag [--data <тека>] [--context-tokens 4096] < питання.jsonl
 //!                       (маршрут, промпт і джерела так само, як у застосунку; для eval)
 //!
@@ -422,6 +423,9 @@ fn zim_check(args: &[String]) -> R {
     }
     let mut lib = uautonomy_core::Library::new(Vec::new());
     lib.add_zim("check", zim.clone());
+    if let Some(n) = opt(args, "--render") {
+        render_check(&zim, n.parse()?)?;
+    }
     for q in &pos[1..] {
         let t = std::time::Instant::now();
         let hits = lib.search(q, 5);
@@ -439,6 +443,81 @@ fn zim_check(args: &[String]) -> R {
             let preview: String = p.text.chars().take(160).collect();
             println!("  уривок: {preview}");
         }
+    }
+    Ok(())
+}
+
+/// Перетворює `n` рівномірно вибраних статей на Markdown так само, як
+/// застосунок (`document` у app/rust/src/api/library.rs), і рахує вади:
+/// порожні статті, залишки HTML, внутрішні посилання, що нікуди не ведуть.
+fn render_check(zim: &uautonomy_core::zim::Zim, n: usize) -> R {
+    use uautonomy_core::text;
+    let all: Vec<_> = zim.articles().collect();
+    if all.is_empty() || n == 0 {
+        return Err("немає статей".into());
+    }
+    let step = (all.len() / n).max(1);
+    let started = std::time::Instant::now();
+    let (mut done, mut empty, mut html_left, mut links, mut dead) = (0, 0, 0, 0, 0);
+    let mut examples: Vec<String> = Vec::new();
+    let mut slowest = (0u128, String::new());
+    for e in all.iter().step_by(step).take(n) {
+        let t = std::time::Instant::now();
+        let (mime, data) = zim.content(e)?;
+        if !mime.starts_with("text/html") {
+            continue;
+        }
+        let raw = String::from_utf8_lossy(&data);
+        let targets = std::cell::RefCell::new(Vec::new());
+        let md = text::html_to_markdown(&raw, &|href| {
+            let p = text::resolve_zim_link(&e.url, href)?;
+            targets.borrow_mut().push(p.clone());
+            Some(format!("zim:x/{p}"))
+        });
+        let ms = t.elapsed().as_millis();
+        if ms > slowest.0 {
+            slowest = (ms, e.title.clone());
+        }
+        done += 1;
+        let plain = text::markdown_to_plain(&md);
+        if plain.trim().chars().count() < 40 {
+            empty += 1;
+            if examples.len() < 12 {
+                examples.push(format!("порожня: {} ({})", e.title, e.url));
+            }
+        }
+        let leftover = [
+            "<div", "<span", "<table", "<img", "<sup", "</", "&nbsp;", "&amp;", "{{",
+        ]
+        .iter()
+        .find(|t| md.contains(*t));
+        if let Some(t) = leftover {
+            html_left += 1;
+            if examples.len() < 12 {
+                examples.push(format!("залишок «{t}»: {} ({})", e.title, e.url));
+            }
+        }
+        for p in targets.into_inner() {
+            links += 1;
+            if zim.get(&p).is_none() {
+                dead += 1;
+                if examples.len() < 12 {
+                    examples.push(format!("мертве посилання {p} у {}", e.title));
+                }
+            }
+        }
+    }
+    println!(
+        "рендер: {done} статей за {} мс (найдовша {} мс: {}); порожніх {empty}, із залишками HTML {html_left}; посилань {links}, мертвих {dead}",
+        started.elapsed().as_millis(),
+        slowest.0,
+        slowest.1
+    );
+    for x in &examples {
+        println!("  {x}");
+    }
+    if done > 0 && (empty * 20 > done || html_left * 20 > done) {
+        return Err("понад 5% статей показуються з вадами".into());
     }
     Ok(())
 }

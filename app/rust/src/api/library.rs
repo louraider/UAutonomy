@@ -205,7 +205,9 @@ pub fn document(key: String) -> Option<DocView> {
     if let Some(rest) = key.strip_prefix("zim:") {
         let (pack, path) = rest.split_once('/')?;
         let z = s.library.zim(pack)?;
-        let e = z.get(path)?;
+        // Посилання часто ведуть на перенаправлення («Інфаркт» → «Інфаркт
+        // міокарда»): назва й база відносних посилань — від цільової статті.
+        let e = z.resolve(&z.get(path)?).ok()?;
         let (mime, data) = z.content(&e).ok()?;
         let raw = String::from_utf8_lossy(&data);
         let body = if mime.starts_with("text/html") {
