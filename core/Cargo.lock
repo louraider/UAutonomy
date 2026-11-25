@@ -752,6 +752,7 @@ dependencies = [
  "flate2",
  "hex",
  "if-addrs",
+ "libc",
  "lzma-rs",
  "ruzstd",
  "serde",

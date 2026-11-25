@@ -22,6 +22,7 @@ pub struct HardwareInfo {
 }
 
 /// Збирає відомості про пристрій. `data_dir` — тека з пакетами.
+#[cfg(not(target_os = "ios"))]
 pub fn detect(data_dir: &Path) -> HardwareInfo {
     use sysinfo::{Disks, System};
     let mut sys = System::new();
@@ -55,9 +56,88 @@ pub fn detect(data_dir: &Path) -> HardwareInfo {
     }
 }
 
+/// iOS: sysinfo тут не збирається, тож читаємо системні виклики напряму.
+/// Доступна пам'ять — `os_proc_available_memory`: скільки ще може взяти
+/// саме цей застосунок до примусового завершення (з entitlement
+/// increased-memory-limit це більше).
+#[cfg(target_os = "ios")]
+pub fn detect(data_dir: &Path) -> HardwareInfo {
+    extern "C" {
+        fn os_proc_available_memory() -> libc::size_t;
+    }
+    fn sysctl_u64(name: &str) -> u64 {
+        let c = std::ffi::CString::new(name).expect("назва sysctl");
+        let mut v: u64 = 0;
+        let mut len = std::mem::size_of::<u64>();
+        // SAFETY: буфер на 8 байтів і його довжина передані правильно.
+        let rc = unsafe {
+            libc::sysctlbyname(
+                c.as_ptr(),
+                (&mut v as *mut u64).cast(),
+                &mut len,
+                std::ptr::null_mut(),
+                0,
+            )
+        };
+        if rc == 0 {
+            v
+        } else {
+            0
+        }
+    }
+    fn sysctl_string(name: &str) -> String {
+        let c = std::ffi::CString::new(name).expect("назва sysctl");
+        let mut buf = [0u8; 64];
+        let mut len = buf.len();
+        // SAFETY: буфер і його довжина передані правильно.
+        let rc = unsafe {
+            libc::sysctlbyname(
+                c.as_ptr(),
+                buf.as_mut_ptr().cast(),
+                &mut len,
+                std::ptr::null_mut(),
+                0,
+            )
+        };
+        if rc != 0 {
+            return String::new();
+        }
+        let end = buf[..len].iter().position(|&b| b == 0).unwrap_or(len);
+        String::from_utf8_lossy(&buf[..end]).into_owned()
+    }
+    fn free_disk(path: &Path) -> u64 {
+        use std::os::unix::ffi::OsStrExt;
+        let Ok(c) = std::ffi::CString::new(path.as_os_str().as_bytes()) else {
+            return 0;
+        };
+        // SAFETY: statfs заповнює структуру, яку ми надали.
+        let mut st: libc::statfs = unsafe { std::mem::zeroed() };
+        if unsafe { libc::statfs(c.as_ptr(), &mut st) } != 0 {
+            return 0;
+        }
+        st.f_bavail * u64::from(st.f_bsize)
+    }
+    // SAFETY: функція без аргументів з libSystem (iOS 13+).
+    let available = unsafe { os_proc_available_memory() } as u64;
+    let cores = std::thread::available_parallelism()
+        .map(|n| n.get() as u32)
+        .unwrap_or(1);
+    HardwareInfo {
+        total_ram_mb: sysctl_u64("hw.memsize") / 1_048_576,
+        available_ram_mb: available / 1_048_576,
+        cpu_cores: cores,
+        cpu_brand: sysctl_string("hw.machine"),
+        os: std::env::consts::OS.to_string(),
+        arch: std::env::consts::ARCH.to_string(),
+        free_disk_mb: free_disk(data_dir) / 1_048_576,
+        is_mobile: true,
+    }
+}
+
 /// Чи лежить `path` на диску з точкою монтування `mount`. На Windows
 /// `canonicalize` дає `\\?\C:\...`, а диск — `C:\`, і регістр літер
 /// довільний; без нормалізації вільне місце завжди було 0.
+#[cfg_attr(target_os = "ios", allow(dead_code))]
 fn path_on_mount(path: &Path, mount: &Path) -> bool {
     fn norm(p: &Path) -> String {
         let s = p.to_string_lossy().replace('/', "\\");
