@@ -2,6 +2,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:uautonomy/ai/ai_service.dart';
+import 'package:uautonomy/legal/terms.dart';
 import 'package:uautonomy/screens/common.dart';
 import 'package:uautonomy/screens/library_screen.dart';
 import 'package:uautonomy/src/rust/api/ai.dart';
@@ -82,7 +83,11 @@ class _ChatScreenState extends State<ChatScreen> {
     );
   }
 
-  Future<void> _load(LocalModel m) async {
+  /// Завантажує модель у пам'ять. Перед першим використанням ШІ просить
+  /// погодитися з умовами; false, якщо користувач відмовився чи сталася помилка.
+  Future<bool> _load(LocalModel m) async {
+    if (!await ensureTermsAccepted(context)) return false;
+    if (!mounted) return false;
     setState(() => _loading = true);
     try {
       _selected = m;
@@ -103,8 +108,10 @@ class _ChatScreenState extends State<ChatScreen> {
         if (_ai.gpuError != null)
           'відеокарта недоступна: ${_ai.gpuError!.length > 160 ? '${_ai.gpuError!.substring(0, 160)}…' : _ai.gpuError}',
       ].join(' · ');
+      return true;
     } catch (e) {
       if (mounted) showError(context, 'Не вдалося запустити модель: $e');
+      return false;
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -137,7 +144,13 @@ class _ChatScreenState extends State<ChatScreen> {
     setState(() => _busy = true);
     final sel = _selected;
     if (!_ai.isLoaded && sel != null && askRoute(question: q).mode != 'cards') {
-      await _load(sel);
+      if (!await _load(sel)) {
+        if (mounted) {
+          _input.text = q;
+          setState(() => _busy = false);
+        }
+        return;
+      }
     }
     _ai.ask(q).listen((a) {
       if (!mounted) return;
@@ -171,6 +184,13 @@ class _ChatScreenState extends State<ChatScreen> {
               onChanged: _loading
                   ? null
                   : (p) => _load(_models.firstWhere((m) => m.path == p)),
+            ),
+          ),
+          IconButton(
+            tooltip: 'Умови використання',
+            icon: const Icon(Icons.gavel),
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(builder: (_) => const TermsScreen()),
             ),
           ),
           IconButton(

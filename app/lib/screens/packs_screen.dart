@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:file_picker/file_picker.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:uautonomy/legal/terms.dart';
 import 'package:uautonomy/screens/common.dart';
 import 'package:uautonomy/src/rust/api/device.dart';
 import 'package:uautonomy/src/rust/api/packs.dart';
@@ -436,6 +437,18 @@ class _PacksScreenState extends State<PacksScreen> {
             title: Text(_catalogTrust!),
           ),
         for (final p in _catalog) _packTile(p, fromCatalog: true),
+        const Divider(),
+        ListTile(
+          leading: const Icon(Icons.gavel),
+          title: const Text('Умови використання'),
+          subtitle: const Text(
+            'Обмеження для моделей ШІ, медичне застереження, ліцензії',
+          ),
+          trailing: const Icon(Icons.chevron_right),
+          onTap: () => Navigator.of(
+            context,
+          ).push(MaterialPageRoute<void>(builder: (_) => const TermsScreen())),
+        ),
         const SizedBox(height: 24),
       ],
     );
