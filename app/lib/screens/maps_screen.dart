@@ -3,6 +3,7 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:uautonomy/src/rust/api/maps.dart';
+import 'package:uautonomy/widgets/brand.dart';
 import 'package:vector_map_tiles/vector_map_tiles.dart';
 import 'package:vector_tile_renderer/vector_tile_renderer.dart' as vtr;
 // ignore: implementation_imports
@@ -136,8 +137,9 @@ class _MapsScreenState extends State<MapsScreen> {
     final r = _region;
     return Column(
       children: [
+        const TabHeader(title: 'Карти'),
         Padding(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
           child: DropdownButton<String>(
             isExpanded: true,
             value: r?.id,

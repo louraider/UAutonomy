@@ -74,45 +74,30 @@ TEMPLATE = """<!doctype html>
 <html lang="uk">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Умови використання · Автономія</title>
 <meta name="description" content="Умови використання застосунку «Автономія»: медичне застереження, обмеження використання моделей ШІ (Gemma), ліцензії і дані.">
-<meta name="theme-color" content="#1f4f8f">
+<meta name="theme-color" content="#1F4FD1">
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
-<style>
-  :root { --bg: #f6f4ef; --surface: #ffffff; --text: #1b1d22; --muted: #5a606b; --line: #e2ded4; --accent: #1f4f8f; }
-  @media (prefers-color-scheme: dark) {
-    :root { --bg: #121417; --surface: #1b1e23; --text: #eceef1; --muted: #a3a9b3; --line: #2c3038; --accent: #6ea3e8; }
-  }
-  * { box-sizing: border-box; }
-  html { -webkit-text-size-adjust: 100%; }
-  body { margin: 0; background: var(--bg); color: var(--text);
-    font: 17px/1.6 system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans", Ubuntu, sans-serif; }
-  a { color: var(--accent); overflow-wrap: anywhere; }
-  .wrap { max-width: 760px; margin: 0 auto; padding: 0 16px; }
-  header.top { display: flex; align-items: center; gap: 10px; padding: 18px 0; }
-  header.top img { width: 34px; height: 34px; }
-  header.top a.name { font-weight: 700; font-size: 19px; color: var(--text); text-decoration: none; }
-  h1 { font-size: clamp(28px, 5vw, 40px); line-height: 1.15; margin: 18px 0 8px; }
-  h2 { font-size: 22px; margin: 34px 0 8px; padding-top: 18px; border-top: 1px solid var(--line); }
-  ul { padding-left: 22px; }
-  li { margin: 6px 0; }
-  footer { padding: 30px 0 46px; color: var(--muted); font-size: 14.5px; border-top: 1px solid var(--line); margin-top: 34px; }
-</style>
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<link rel="stylesheet" href="/style.css">
 </head>
 <body>
-<div class="wrap">
-  <header class="top">
-    <img src="/favicon.svg" alt="">
-    <a class="name" href="/">Автономія</a>
-  </header>
-  <main data-terms-version="{{VERSION}}">
+<a class="skip" href="#main">До змісту</a>
+<header class="doc-top">
+  <div class="wrap top">
+    <a class="brand" href="/"><img src="/mark-on-blue.svg" alt=""><span>автономія</span></a>
+  </div>
+</header>
+<main id="main" class="wrap doc" data-terms-version="{{VERSION}}">
 {{BODY}}
-  </main>
-  <footer>
-    <a href="/">На головну</a> · Повні тексти англійською: <a href="https://ai.google.dev/gemma/terms">Gemma Terms of Use</a>, <a href="https://ai.google.dev/gemma/prohibited_use_policy">Gemma Prohibited Use Policy</a>
-  </footer>
-</div>
+</main>
+<footer>
+  <div class="wrap">
+    <a class="brand" href="/"><img src="/favicon.svg" alt="">автономія</a>
+    <span>Повні тексти англійською: <a href="https://ai.google.dev/gemma/terms">Gemma Terms of Use</a>, <a href="https://ai.google.dev/gemma/prohibited_use_policy">Gemma Prohibited Use Policy</a></span>
+  </div>
+</footer>
 </body>
 </html>
 """
