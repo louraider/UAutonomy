@@ -107,22 +107,42 @@ jobs:
           echo "$KEYSTORE_B64" | base64 -d > "$RUNNER_TEMP/release.p12"
           echo "UAUTONOMY_KEYSTORE=$RUNNER_TEMP/release.p12" >> "$GITHUB_ENV"
           echo "UAUTONOMY_REQUIRE_RELEASE_KEY=1" >> "$GITHUB_ENV"
-      # Один універсальний APK для всіх процесорів: його «Обмін» роздає
-      # іншим телефонам, і він має встановитися на будь-якому.
-      - run: flutter build apk --release
+      # Окремий APK під кожну архітектуру замість одного універсального:
+      # універсальний ніс бібліотеки трьох процесорів одразу (269 МБ).
+      # Основний — arm64-v8a, він же лежить у релізі під сталою назвою
+      # avtonomiia.apk. «Обмін» роздає той APK, що встановлено на телефоні.
+      # Символи Dart окремо (--split-debug-info), щоб розшифрувати падіння.
+      - run: flutter build apk --release --split-per-abi --split-debug-info=build/symbols
         env:
           UAUTONOMY_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
-      - name: Сертифікат підпису APK
+      - name: Сертифікат підпису і розмір APK
+        working-directory: app/build/app/outputs/flutter-apk
         run: |
           APKSIGNER=$(ls "$ANDROID_HOME"/build-tools/*/apksigner | sort -V | tail -1)
-          "$APKSIGNER" verify --print-certs build/app/outputs/flutter-apk/app-release.apk | tee cert.txt
-          if grep -q "CN=Android Debug" cert.txt; then echo "::warning::APK підписано debug-ключем"; fi
-          mv build/app/outputs/flutter-apk/app-release.apk build/app/outputs/flutter-apk/avtonomiia.apk
+          mkdir -p dist
+          for abi in arm64-v8a armeabi-v7a x86_64; do
+            "$APKSIGNER" verify --print-certs "app-$abi-release.apk" | tee "cert-$abi.txt"
+            if grep -q "CN=Android Debug" "cert-$abi.txt"; then echo "::warning::APK $abi підписано debug-ключем"; fi
+            cp "app-$abi-release.apk" "dist/avtonomiia-$abi.apk"
+          done
+          ls -l dist
+          # Сторож розміру: LiteRT-LM чи Vulkan на Android повернулися б
+          # непомітно (налаштування в app/pubspec.yaml, hooks.user_defines).
+          SIZE=$(stat -c %s dist/avtonomiia-arm64-v8a.apk)
+          echo "arm64-v8a: $((SIZE / 1048576)) МБ"
+          if [ "$SIZE" -gt $((60 * 1048576)) ]; then
+            echo "::error::APK arm64-v8a важить понад 60 МБ"; unzip -lv dist/avtonomiia-arm64-v8a.apk | sort -k3 -n -r | head -20; exit 1
+          fi
       - uses: actions/upload-artifact@v4
         with:
           name: uautonomy-android-apk
-          path: app/build/app/outputs/flutter-apk/avtonomiia.apk
+          path: app/build/app/outputs/flutter-apk/dist/*.apk
           retention-days: 14
+      - uses: actions/upload-artifact@v4
+        with:
+          name: uautonomy-android-symbols
+          path: app/build/symbols
+          retention-days: 90
 
   android-e2e:
     name: Android-емулятор (наскрізний тест)
@@ -265,9 +285,12 @@ jobs:
       - name: Файли релізу
         working-directory: dist
         run: |
-          mv android/avtonomiia.apk avtonomiia.apk
+          # Сталий avtonomiia.apk (посилання з сайту й старі посилання) —
+          # це arm64-v8a, він підходить майже всім телефонам.
+          cp android/avtonomiia-arm64-v8a.apk avtonomiia.apk
+          mv android/avtonomiia-armeabi-v7a.apk android/avtonomiia-x86_64.apk .
           zip -r -q -9 avtonomiia-windows-x64.zip Avtonomiia
-          sha256sum avtonomiia.apk avtonomiia-windows-x64.zip > SHA256SUMS.txt
+          sha256sum avtonomiia.apk avtonomiia-armeabi-v7a.apk avtonomiia-x86_64.apk avtonomiia-windows-x64.zip > SHA256SUMS.txt
           cat SHA256SUMS.txt
       - name: Оновити реліз app
         env:
@@ -277,12 +300,15 @@ jobs:
           git push -f origin refs/tags/app
           NOTES="Тестова збірка з main, коміт ${GITHUB_SHA::7} ($(date -u +%Y-%m-%d)).
 
-          - Android: avtonomiia.apk (підписано постійним ключем, SHA-256 сертифіката в docs/signing.md)
+          - Android: avtonomiia.apk — для більшості телефонів (arm64-v8a)
+          - Android, старі 32-бітні телефони: avtonomiia-armeabi-v7a.apk (без ШІ-помічника)
+          - Android, Chromebook та емулятори: avtonomiia-x86_64.apk
+            (усі APK підписано постійним ключем, SHA-256 сертифіката в docs/signing.md)
           - Windows: avtonomiia-windows-x64.zip (розпакуйте й запустіть Avtonomiia/uautonomy.exe)
           - Контрольні суми: SHA256SUMS.txt
 
           Медичні картки складено за Наказом МОЗ №441, але лікар їх ще не перевірив."
-          FILES="dist/avtonomiia.apk dist/avtonomiia-windows-x64.zip dist/SHA256SUMS.txt"
+          FILES="dist/avtonomiia.apk dist/avtonomiia-armeabi-v7a.apk dist/avtonomiia-x86_64.apk dist/avtonomiia-windows-x64.zip dist/SHA256SUMS.txt"
           if gh release view app >/dev/null 2>&1; then
             gh release upload app $FILES --clobber
             gh release edit app --notes "$NOTES" --prerelease

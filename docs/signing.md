@@ -29,7 +29,9 @@ Settings → Secrets and variables → Actions → New repository secret:
 | `ANDROID_KEYSTORE_BASE64` | увесь текст файлу `android-keystore.base64.txt` |
 | `ANDROID_KEYSTORE_PASSWORD` | увесь текст файлу `android-keystore-password.txt` |
 
-CI (`ci.yml`) збирає універсальний APK і підписує його постійним ключем; на
+CI (`ci.yml`) збирає окремі APK під arm64-v8a, armeabi-v7a і x86_64 і підписує
+кожен постійним ключем (оновлення з колишнього універсального APK працює: той
+самий ключ і більший versionCode); на
 `main` без секретів збірка падає, щоб не роздати APK з debug-ключем. Workflow
 «Пакети» підписує кожен пакет і `catalog.json` і не публікує нічого без
 `PACK_SIGNING_KEY`; перед публікацією він перевіряє каталог вбудованими

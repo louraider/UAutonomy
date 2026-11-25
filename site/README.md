@@ -10,6 +10,8 @@
 | Адреса | Куди |
 |---|---|
 | `/android`, `/apk` | `releases/download/app/avtonomiia.apk` |
+| `/android-32` | `releases/download/app/avtonomiia-armeabi-v7a.apk` |
+| `/android-x86` | `releases/download/app/avtonomiia-x86_64.apk` |
 | `/windows` | `releases/download/app/avtonomiia-windows-x64.zip` |
 | `/sha256` | `releases/download/app/SHA256SUMS.txt` |
 | `/catalog.json` | `releases/download/packs/catalog.json` (каталог пакетів, підписаний) |

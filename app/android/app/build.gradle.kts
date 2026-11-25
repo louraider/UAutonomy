@@ -61,6 +61,15 @@ android {
         versionName = flutter.versionName
     }
 
+    // Стиснені нативні бібліотеки: APK завантажують з мобільного інтернету й
+    // передають «Обміном» між телефонами, тож вага файлу важливіша за кілька
+    // десятків МБ на диску після встановлення (Android розпаковує .so).
+    packaging {
+        jniLibs {
+            useLegacyPackaging = true
+        }
+    }
+
     buildTypes {
         release {
             signingConfig = if (hasReleaseKey) {
