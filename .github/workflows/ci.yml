@@ -307,7 +307,8 @@ jobs:
           code=$?
           grep -E "error(\[E[0-9]+\])?:|\*\* BUILD|requires a development team" "$RUNNER_TEMP/ios-build.log" | sort -u | head -80
           if [ $code -ne 0 ]; then
-            grep -n -A60 "Cargokit BuildTool failed" "$RUNNER_TEMP/ios-build.log" | head -150
+            # Помилка cargo: без рядків про завантаження й компіляцію крейтів.
+            grep "SEVERE:" "$RUNNER_TEMP/ios-build.log" | grep -vE "Downloaded|Compiling|Downloading|Updating|Blocking" | head -150
             grep -n -B3 -A25 "^\s*error" "$RUNNER_TEMP/ios-build.log" | head -200
           fi
           exit $code
