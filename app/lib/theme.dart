@@ -264,7 +264,11 @@ ThemeData buildTheme(Brightness brightness) {
         padding: const WidgetStatePropertyAll(buttonPadding),
         shape: buttonShape,
         textStyle: const WidgetStatePropertyAll(
-          TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
+          TextStyle(
+            fontFamily: textFont,
+            fontWeight: FontWeight.w700,
+            fontSize: 15,
+          ),
         ),
       ),
     ),
@@ -275,7 +279,11 @@ ThemeData buildTheme(Brightness brightness) {
         side: WidgetStatePropertyAll(BorderSide(color: b.line, width: 1.5)),
         foregroundColor: WidgetStatePropertyAll(b.ink),
         textStyle: const WidgetStatePropertyAll(
-          TextStyle(fontWeight: FontWeight.w600, fontSize: 15),
+          TextStyle(
+            fontFamily: textFont,
+            fontWeight: FontWeight.w600,
+            fontSize: 15,
+          ),
         ),
       ),
     ),
@@ -283,7 +291,7 @@ ThemeData buildTheme(Brightness brightness) {
       style: ButtonStyle(
         shape: buttonShape,
         textStyle: const WidgetStatePropertyAll(
-          TextStyle(fontWeight: FontWeight.w600),
+          TextStyle(fontFamily: textFont, fontWeight: FontWeight.w600),
         ),
       ),
     ),

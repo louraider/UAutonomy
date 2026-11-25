@@ -4,6 +4,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:uautonomy/ai/ai_service.dart';
+import 'package:uautonomy/ai/report.dart';
 import 'package:uautonomy/legal/terms.dart';
 import 'package:uautonomy/screens/common.dart';
 import 'package:uautonomy/screens/library_screen.dart';
@@ -402,6 +403,22 @@ class _AnswerTile extends StatelessWidget {
             Text(
               'У бібліотеці не знайдено джерел за цим запитанням.',
               style: t.bodySmall,
+            ),
+          if (answer.done &&
+              answer.error == null &&
+              answer.route == null &&
+              answer.text.isNotEmpty)
+            Align(
+              alignment: Alignment.centerLeft,
+              child: TextButton.icon(
+                onPressed: () => showReportSheet(
+                  context,
+                  question: answer.question,
+                  answer: cleanAiText(answer.text.toString()),
+                ),
+                icon: const Icon(Icons.flag_outlined, size: 18),
+                label: const Text('Поскаржитися на відповідь'),
+              ),
             ),
         ],
       ),

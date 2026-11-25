@@ -47,6 +47,7 @@ dependencies:
   vector_map_tiles: 9.0.0-beta.13
   vector_tile_renderer: ^6.1.0
   llamadart_llama_cpp_flutter: ^0.20.5
+  url_launcher: ^6.3.3
 
 dev_dependencies:
   flutter_test:
@@ -60,6 +61,7 @@ dev_dependencies:
   flutter_lints: ^6.0.0
   integration_test:
     sdk: flutter
+  msix: ^3.18.0
 
 # Розмір APK: лише рушій llama.cpp (моделі GGUF), без LiteRT-LM (~50 МБ на
 # кожну архітектуру). На Android llama.cpp з ComputeDevice.auto однаково
@@ -146,3 +148,20 @@ flutter:
   #
   # For details regarding fonts from package dependencies,
   # see https://flutter.dev/to/font-from-package
+
+# Пакет MSIX для Microsoft Store (`dart run msix:create --store`). Справжні
+# identity_name, publisher і publisher_display_name видає Partner Center
+# після резервування назви; CI бере їх зі змінних репозиторію MSSTORE_*
+# (див. docs/stores.md). Тут заглушки, щоб пакет збирався й без них.
+# Store сам підписує пакет, власний сертифікат не потрібен.
+msix_config:
+  display_name: Автономія
+  publisher_display_name: Avtonomiia
+  identity_name: Avtonomiia.Placeholder
+  publisher: CN=00000000-0000-0000-0000-000000000000
+  logo_path: ../brand/mark-512.png
+  languages: uk-ua
+  # Обмін піднімає вебсервер у локальній мережі.
+  capabilities: internetClient,internetClientServer,privateNetworkClientServer
+  output_name: avtonomiia
+  build_windows: false

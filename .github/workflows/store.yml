@@ -1,0 +1,251 @@
+name: Магазини
+
+# Збірки для Google Play (AAB) і Microsoft Store (MSIX). На кожен PR, що
+# чіпає застосунок, лише збираються й перевіряються. Завантаження в
+# магазини запускається вручну (Actions → «Магазини» → Run workflow або
+# `gh workflow run store.yml -f play=true`). Деталі: docs/stores.md.
+#
+# У цих збірках UAUTONOMY_DIST=play / msstore: оновлює магазин, тому
+# застосунок не перевіряє нових версій сам і не роздає свій APK.
+
+on:
+  pull_request:
+    paths:
+      - "app/**"
+      - "core/**"
+      - ".github/workflows/store.yml"
+  workflow_dispatch:
+    inputs:
+      play:
+        description: "Завантажити AAB у Google Play (внутрішнє тестування)"
+        type: boolean
+        default: false
+      play_status:
+        description: "Статус випуску в Play: draft, поки застосунок ще не пройшов першу перевірку"
+        type: choice
+        options: [draft, completed]
+        default: draft
+      msstore:
+        description: "Надіслати MSIX у Microsoft Store"
+        type: boolean
+        default: false
+
+concurrency:
+  group: store-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  FLUTTER_VERSION: "3.50.1"
+  CARGO_TERM_COLOR: always
+  # versionCode AAB = 10000 + номер запуску: більше за будь-який APK із
+  # сайту (1000 × ABI + номер), тож Play зможе оновити й такі встановлення,
+  # якщо підпис збігається (див. docs/stores.md, «Ключ підпису»).
+  PLAY_VERSION_OFFSET: 10000
+
+jobs:
+  play:
+    name: Google Play (AAB)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: app
+    steps:
+      - uses: actions/checkout@v4
+      - name: Базовий пакет із content/
+        run: python3 tools/build_base_pack.py
+        working-directory: .
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-linux-android,armv7-linux-androideabi,x86_64-linux-android
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: app/rust
+          key: play
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      # Той самий постійний ключ, що й для APK із сайту (docs/signing.md).
+      # У Play Console його реєструють як ключ підпису застосунку, тоді
+      # APK із сайту і з Play взаємозамінні.
+      - name: Ключ підпису
+        env:
+          KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+        run: |
+          if [ -z "$KEYSTORE_B64" ] || [ -z "$KEYSTORE_PASSWORD" ]; then
+            echo "::warning::Немає секретів ключа: AAB буде з debug-ключем, у Play такий не приймуть"
+            if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then exit 1; fi
+            exit 0
+          fi
+          echo "$KEYSTORE_B64" | base64 -d > "$RUNNER_TEMP/release.p12"
+          echo "UAUTONOMY_KEYSTORE=$RUNNER_TEMP/release.p12" >> "$GITHUB_ENV"
+          echo "UAUTONOMY_REQUIRE_RELEASE_KEY=1" >> "$GITHUB_ENV"
+      - name: flutter build appbundle
+        env:
+          UAUTONOMY_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+        run: |
+          CODE=$((PLAY_VERSION_OFFSET + GITHUB_RUN_NUMBER))
+          echo "versionCode: $CODE"
+          flutter build appbundle --release \
+            --build-number=$CODE \
+            --dart-define=UAUTONOMY_BUILD=${{ github.run_number }} \
+            --dart-define=UAUTONOMY_DIST=play \
+            --split-debug-info=build/symbols
+      # З листопада 2025 Play приймає лише застосунки, чиї нативні бібліотеки
+      # вирівняно на сторінки 16 КБ (Android 15+). Перевіряємо кожну .so.
+      - name: Бібліотеки вирівняно на 16 КБ
+        working-directory: app/build/app/outputs/bundle/release
+        run: |
+          AAB=app-release.aab
+          ls -l $AAB
+          rm -rf libs && mkdir libs && unzip -q -o $AAB 'base/lib/*' -d libs
+          BAD=0
+          for so in $(find libs -name '*.so'); do
+            abi=$(basename "$(dirname "$so")")
+            [ "$abi" = "armeabi-v7a" ] && continue
+            ALIGN=$(readelf -lW "$so" | awk '$1=="LOAD"{print $NF}' | sort -u)
+            for a in $ALIGN; do
+              if [ $((a)) -lt 16384 ]; then
+                echo "::error::$abi/$(basename "$so"): LOAD вирівняно на $a, потрібно 0x4000"; BAD=1
+              fi
+            done
+            echo "$abi/$(basename "$so"): $ALIGN"
+          done
+          exit $BAD
+      - name: Розміри за архітектурами
+        working-directory: app/build/app/outputs/bundle/release
+        run: |
+          unzip -lv app-release.aab | awk '/base\/lib\//{split($8,p,"/"); s[p[3]]+=$1} END{for(a in s) printf "%s: %.1f МБ\n", a, s[a]/1048576}'
+          SIZE=$(stat -c %s app-release.aab)
+          echo "AAB: $((SIZE / 1048576)) МБ"
+      - name: Сертифікат підпису
+        working-directory: app/build/app/outputs/bundle/release
+        run: |
+          keytool -printcert -jarfile app-release.aab | tee cert.txt | head -12
+          if grep -q "CN=Android Debug" cert.txt; then echo "::warning::AAB підписано debug-ключем"; fi
+      - uses: actions/upload-artifact@v4
+        with:
+          name: avtonomiia-play-aab
+          path: |
+            app/build/app/outputs/bundle/release/app-release.aab
+            app/build/app/outputs/mapping/release/mapping.txt
+          if-no-files-found: ignore
+          retention-days: 30
+      - uses: actions/upload-artifact@v4
+        with:
+          name: avtonomiia-play-symbols
+          path: app/build/symbols
+          retention-days: 90
+      # Перший AAB для нового застосунку Play приймає лише через Play Console
+      # вручну; далі цей крок завантажує нові збірки сам.
+      - name: Завантажити в Google Play
+        if: github.event_name == 'workflow_dispatch' && inputs.play
+        uses: r0adkll/upload-google-play@v1.1.3
+        with:
+          serviceAccountJsonPlainText: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+          packageName: org.uautonomy.app
+          releaseFiles: app/build/app/outputs/bundle/release/app-release.aab
+          track: internal
+          status: ${{ inputs.play_status }}
+
+  msstore:
+    name: Microsoft Store (MSIX)
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: app
+    steps:
+      - uses: actions/checkout@v4
+      - name: Базовий пакет із content/
+        run: python tools/build_base_pack.py
+        working-directory: .
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: app/rust
+          key: msstore
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - run: flutter build windows --release --build-number=${{ github.run_number }} --dart-define=UAUTONOMY_BUILD=${{ github.run_number }} --dart-define=UAUTONOMY_DIST=msstore
+      # Версія MSIX: чотири числа, останнє Store вимагає нулем.
+      - name: Версія пакета
+        shell: pwsh
+        run: |
+          $base = (Select-String -Path pubspec.yaml -Pattern '^version:\s*([0-9]+)\.([0-9]+)\.').Matches[0].Groups
+          "MSIX_VERSION=$($base[1].Value).$($base[2].Value).${{ github.run_number }}.0" | Out-File -Append $env:GITHUB_ENV
+      # Перевірка пакета, як у людини: тестовий підпис, встановлення,
+      # запуск на 20 с і видалення. Ловить те, що ламає саме MSIX
+      # (віртуалізація AppData, відсутні DLL).
+      - name: MSIX ставиться і запускається
+        shell: pwsh
+        run: |
+          dart run msix:create --version $env:MSIX_VERSION --install-certificate true --output-name avtonomiia-test
+          if ($LASTEXITCODE -ne 0) { throw "msix:create: код $LASTEXITCODE" }
+          $msix = Get-ChildItem build/windows/x64/runner/Release/avtonomiia-test.msix
+          "Пакет: $($msix.Length / 1MB) МБ"
+          Add-AppxPackage -Path $msix.FullName
+          $pkg = Get-AppxPackage | Where-Object Name -eq 'Avtonomiia.Placeholder'
+          if (-not $pkg) { throw 'пакет не встановився' }
+          Start-Process "shell:AppsFolder\$($pkg.PackageFamilyName)!uautonomy"
+          Start-Sleep -Seconds 20
+          $app = Get-Process uautonomy -ErrorAction SilentlyContinue
+          if (-not $app) { throw 'застосунок з MSIX не запустився або одразу завершився' }
+          "Працює 20 с, пам'ять $([math]::Round($app.WorkingSet64 / 1MB)) МБ"
+          $app | Stop-Process -Force
+          Start-Sleep -Seconds 2
+          Remove-AppxPackage $pkg.PackageFullName
+          Remove-Item $msix.FullName
+      # Пакет для Store: без підпису (Store підписує сам), з ідентичністю
+      # з Partner Center (змінні репозиторію MSSTORE_IDENTITY_NAME,
+      # MSSTORE_PUBLISHER, MSSTORE_PUBLISHER_DISPLAY_NAME). Без них збирається
+      # пакет-заглушка, щоб перевірити саму збірку.
+      - name: MSIX для Store
+        shell: pwsh
+        env:
+          ID_NAME: ${{ vars.MSSTORE_IDENTITY_NAME }}
+          PUBLISHER: ${{ vars.MSSTORE_PUBLISHER }}
+          PUBLISHER_NAME: ${{ vars.MSSTORE_PUBLISHER_DISPLAY_NAME }}
+        run: |
+          $a = @('run', 'msix:create', '--store', '--version', $env:MSIX_VERSION)
+          if ($env:ID_NAME) {
+            $a += @('--identity-name', $env:ID_NAME, '--publisher', $env:PUBLISHER, '--publisher-display-name', $env:PUBLISHER_NAME)
+          } else {
+            "::warning::Немає змінних MSSTORE_*: пакет зі заглушкою замість ідентичності з Partner Center"
+            if ('${{ github.event_name }}' -eq 'workflow_dispatch' -and '${{ inputs.msstore }}' -eq 'true') { throw 'для надсилання в Store потрібні MSSTORE_*' }
+          }
+          dart @a
+          if ($LASTEXITCODE -ne 0) { throw "msix:create: код $LASTEXITCODE" }
+          Get-Item build/windows/x64/runner/Release/avtonomiia.msix | Select-Object Name, Length
+      - uses: actions/upload-artifact@v4
+        with:
+          name: avtonomiia-msstore-msix
+          path: app/build/windows/x64/runner/Release/avtonomiia.msix
+          retention-days: 30
+      # Надсилання через Microsoft Store CLI. Потрібен застосунок Entra ID,
+      # прив'язаний до Partner Center (docs/stores.md). Перше подання
+      # робиться вручну в Partner Center.
+      - uses: microsoft/setup-msstore-cli@v1
+        if: github.event_name == 'workflow_dispatch' && inputs.msstore
+      - name: Надіслати в Microsoft Store
+        if: github.event_name == 'workflow_dispatch' && inputs.msstore
+        shell: pwsh
+        env:
+          TENANT: ${{ secrets.MSSTORE_TENANT_ID }}
+          SELLER: ${{ secrets.MSSTORE_SELLER_ID }}
+          CLIENT: ${{ secrets.MSSTORE_CLIENT_ID }}
+          SECRET: ${{ secrets.MSSTORE_CLIENT_SECRET }}
+          PRODUCT: ${{ vars.MSSTORE_PRODUCT_ID }}
+        run: |
+          msstore reconfigure --tenantId $env:TENANT --sellerId $env:SELLER --clientId $env:CLIENT --clientSecret $env:SECRET
+          msstore publish build/windows/x64/runner/Release/avtonomiia.msix -id $env:PRODUCT

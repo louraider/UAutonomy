@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:flutter/services.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:qr_flutter/qr_flutter.dart';
+import 'package:uautonomy/distribution.dart';
 import 'package:uautonomy/screens/common.dart';
 import 'package:uautonomy/share/windows_firewall.dart';
 import 'package:uautonomy/src/rust/api/share.dart';
@@ -113,7 +114,10 @@ class _ShareScreenState extends State<ShareScreen> {
   }
 
   Future<List<String>> _appFiles() async {
-    if (!Platform.isAndroid) return const [];
+    // Із Google Play застосунок ставиться частинами (AAB), і один APK з
+    // телефона на іншому не запрацює. До того ж Play забороняє роздавати
+    // застосунок повз нього, тому в магазинній збірці APK не роздаємо.
+    if (!Platform.isAndroid || isStoreBuild) return const [];
     try {
       final apk = await _channel.invokeMethod<String>('apkPath');
       if (apk == null) return const [];
@@ -192,7 +196,7 @@ class _ShareScreenState extends State<ShareScreen> {
                 ? '1. Увімкніть точку доступу на цьому телефоні або підключіться до спільного Wi-Fi.\n'
                       '2. Натисніть «Увімкнути обмін».\n'
                       '3. Інший телефон сканує QR-код камерою, відкриває бібліотеку в браузері '
-                      'і може завантажити застосунок і пакети. На iPhone і ноутбуках у браузері '
+                      '${isStoreBuild ? 'і може завантажити пакети' : 'і може завантажити застосунок і пакети'}. На iPhone і ноутбуках у браузері '
                       'працюють пошук, картки й офлайн-карти завантажених областей.'
                 : '1. Підключіть цей комп\'ютер і телефон до одного Wi-Fi чи роутера '
                       '(або підключіть комп\'ютер до точки доступу телефона).\n'
