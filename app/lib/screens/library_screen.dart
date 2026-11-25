@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:uautonomy/screens/common.dart';
 import 'package:uautonomy/src/rust/api/library.dart';
+import 'package:uautonomy/widgets/markdown_view.dart';
 
 /// Головний екран: термінові картки за розділами та офлайн-пошук.
 class LibraryScreen extends StatefulWidget {
@@ -254,7 +255,19 @@ class _SourceQuote extends StatelessWidget {
   }
 }
 
-/// Стаття з пакета або сторінка довідника ZIM (простим текстом).
+/// Відкриває посилання зі статті: картку чи іншу сторінку довідника.
+void openLink(BuildContext context, String target) {
+  if (target.startsWith('card:')) {
+    final c = card(id: target.substring('card:'.length));
+    if (c != null) openCard(context, c);
+  } else if (target.startsWith('zim:') || target.startsWith('article:')) {
+    Navigator.of(
+      context,
+    ).push(MaterialPageRoute<void>(builder: (_) => DocScreen(docKey: target)));
+  }
+}
+
+/// Стаття з пакета або сторінка довідника ZIM (Markdown).
 class DocScreen extends StatelessWidget {
   const DocScreen({super.key, required this.docKey});
 
@@ -276,18 +289,28 @@ class DocScreen extends StatelessWidget {
                   padding: const EdgeInsets.all(16),
                   children: [
                     if (!d.reviewed) ...[
-                      const Align(
+                      Align(
                         alignment: Alignment.centerLeft,
-                        child: UnreviewedBadge(),
+                        child: UnreviewedBadge(who: d.reviewRequired),
                       ),
                       const SizedBox(height: 12),
                     ],
-                    SelectableText(d.body),
+                    MarkdownView(
+                      data: d.body,
+                      onLink: (target) => openLink(context, target),
+                    ),
                     const SizedBox(height: 16),
                     Text(
                       'Джерело: ${d.source}',
                       style: Theme.of(context).textTheme.bodySmall,
                     ),
+                    if (d.reviewRequired == 'medic') ...[
+                      const SizedBox(height: 8),
+                      Text(
+                        emergencyNote,
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
+                    ],
                   ],
                 ),
         );

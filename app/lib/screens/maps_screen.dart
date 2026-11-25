@@ -31,6 +31,9 @@ class _MapsScreenState extends State<MapsScreen> {
   Future<MapHeader>? _header;
   final _theme = mapTheme();
 
+  /// Колір тла світлої теми OpenMapTiles (шар `background`).
+  static const _background = Color(0xFFEFEFEF);
+
   @override
   void initState() {
     super.initState();
@@ -49,9 +52,14 @@ class _MapsScreenState extends State<MapsScreen> {
     final installed = regions.where((r) => r.mapPath != null).toList();
     setState(() {
       _regions = regions;
+      // Лишаємо вибрану область, лише якщо вона встановлена (або нічого не
+      // встановлено): після встановлення Києва карта відкривається на Києві,
+      // а не на першій у списку невстановленій Вінницькій.
       final keep = _region == null
           ? null
-          : regions.where((r) => r.id == _region!.id).firstOrNull;
+          : (installed.isEmpty ? regions : installed)
+                .where((r) => r.id == _region!.id)
+                .firstOrNull;
       _select(keep ?? (installed.isNotEmpty ? installed.first : regions.first));
     });
   }
@@ -91,11 +99,21 @@ class _MapsScreenState extends State<MapsScreen> {
     return FlutterMap(
       key: ValueKey(r.id),
       options: MapOptions(
-        initialCenter: bounds.center,
-        initialZoom: 9,
+        initialCameraFit: CameraFit.bounds(
+          bounds: bounds,
+          padding: const EdgeInsets.all(8),
+        ),
         minZoom: 5,
         maxZoom: 18,
-        cameraConstraint: CameraConstraint.contain(bounds: bounds),
+        // Обмежуємо центр, а не весь видимий прямокутник: з
+        // CameraConstraint.contain область, меншу за вікно (Київ на ПК),
+        // неможливо «вмістити», і карта відкидала будь-який рух чи масштаб.
+        cameraConstraint: CameraConstraint.containCenter(bounds: bounds),
+        // Поза областю тайлів немає: тло як у теми, а не сіра шахівниця.
+        backgroundColor: _background,
+        interactionOptions: const InteractionOptions(
+          flags: InteractiveFlag.all & ~InteractiveFlag.rotate,
+        ),
       ),
       children: [
         VectorTileLayer(
@@ -105,8 +123,9 @@ class _MapsScreenState extends State<MapsScreen> {
           }),
           maximumZoom: 18,
         ),
+        // TextSourceAttribution сам додає «©».
         const RichAttributionWidget(
-          attributions: [TextSourceAttribution('© учасники OpenStreetMap')],
+          attributions: [TextSourceAttribution('учасники OpenStreetMap')],
         ),
       ],
     );

@@ -26,10 +26,15 @@ pub struct Doc {
     pub key: String,
     pub kind: DocKind,
     pub title: String,
+    /// Простий текст для пошуку, уривків і ШІ.
     pub text: String,
+    /// Markdown для показу (статті); `None` — показувати `text`.
+    pub markdown: Option<String>,
     pub source: String,
     pub reviewed: bool,
     pub category: Option<Category>,
+    /// Хто має перевірити: `medic`, `deminer` або `None`.
+    pub review_required: Option<String>,
     pub pack_id: String,
 }
 
@@ -148,9 +153,11 @@ impl Library {
                 kind: DocKind::Card,
                 title: c.title.clone(),
                 text: c.full_text(),
+                markdown: None,
                 source: card_source(&c),
                 reviewed: c.reviewed,
                 category: Some(c.category),
+                review_required: c.review_required.clone(),
                 pack_id: pack_id.to_string(),
             };
             self.add_doc(doc, &c.tags.join(" "));
@@ -164,15 +171,22 @@ impl Library {
             // Новіша редакція статті замінює попередню (як і для карток).
             self.rebuild_without(&|d| d.key == key);
         }
+        // Редакторські коментарі прибираємо, ідентифікатори карток у
+        // таблицях стають посиланнями з назвами карток.
+        let markdown = text::link_card_ids(&text::strip_comments(&a.body), &|id| {
+            self.card(id).map(|c| c.title.clone())
+        });
         self.add_doc(
             Doc {
                 key,
                 kind: DocKind::Article,
                 title: a.title,
-                text: a.body,
+                text: text::markdown_to_plain(&markdown),
+                markdown: Some(markdown),
                 source: source.to_string(),
                 reviewed: a.reviewed,
                 category: a.category,
+                review_required: a.review_required,
                 pack_id: pack_id.to_string(),
             },
             "",

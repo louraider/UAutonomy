@@ -7,6 +7,8 @@
 // Києва з офіційного каталогу й відкриває її на вкладці «Карти».
 import 'dart:io';
 
+import 'package:flutter/gestures.dart';
+
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
@@ -20,6 +22,7 @@ import 'package:uautonomy/src/rust/api/maps.dart';
 import 'package:uautonomy/src/rust/api/packs.dart';
 import 'package:uautonomy/src/rust/api/share.dart';
 import 'package:uautonomy/src/rust/frb_generated.dart';
+import 'package:vector_map_tiles/vector_map_tiles.dart';
 
 const networkTests = bool.fromEnvironment('NETWORK_TESTS');
 
@@ -175,6 +178,32 @@ void main() {
       await settle(tester, 5000);
       expect(find.textContaining('Не вдалося відкрити карту'), findsNothing);
       expect(find.byType(FlutterMap), findsOneWidget);
+      expect(tester.takeException(), isNull);
+      expect(
+        find.text('Київ'),
+        findsWidgets,
+        reason: 'відкрито встановлену область, а не першу в списку',
+      );
+
+      // Карта реагує на керування: раніше CameraConstraint.contain на
+      // широкому вікні відкидав будь-який рух і масштаб.
+      MapCamera camera() =>
+          MapCamera.of(tester.element(find.byType(VectorTileLayer)));
+      final before = camera();
+      final mid = tester.getCenter(find.byType(FlutterMap));
+      await tester.sendEventToBinding(
+        PointerScrollEvent(position: mid, scrollDelta: const Offset(0, -400)),
+      );
+      await settle(tester, 1500);
+      expect(camera().zoom, greaterThan(before.zoom), reason: 'колесо миші');
+      final zoomed = camera();
+      await tester.dragFrom(mid, const Offset(150, 80));
+      await settle(tester, 1500);
+      expect(
+        camera().center,
+        isNot(equals(zoomed.center)),
+        reason: 'перетягування',
+      );
       expect(tester.takeException(), isNull);
     },
     skip: !networkTests,

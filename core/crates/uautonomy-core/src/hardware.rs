@@ -39,7 +39,7 @@ pub fn detect(data_dir: &Path) -> HardwareInfo {
     let free_disk_mb = disks
         .list()
         .iter()
-        .filter(|d| canon.starts_with(d.mount_point()))
+        .filter(|d| path_on_mount(&canon, d.mount_point()))
         .max_by_key(|d| d.mount_point().as_os_str().len())
         .map(|d| d.available_space() / 1_048_576)
         .unwrap_or(0);
@@ -52,6 +52,27 @@ pub fn detect(data_dir: &Path) -> HardwareInfo {
         arch: std::env::consts::ARCH.to_string(),
         free_disk_mb,
         is_mobile: matches!(std::env::consts::OS, "android" | "ios"),
+    }
+}
+
+/// Чи лежить `path` на диску з точкою монтування `mount`. На Windows
+/// `canonicalize` дає `\\?\C:\...`, а диск — `C:\`, і регістр літер
+/// довільний; без нормалізації вільне місце завжди було 0.
+fn path_on_mount(path: &Path, mount: &Path) -> bool {
+    fn norm(p: &Path) -> String {
+        let s = p.to_string_lossy().replace('/', "\\");
+        let s = s
+            .strip_prefix("\\\\?\\UNC\\")
+            .map(|r| format!("\\\\{r}"))
+            .unwrap_or_else(|| s.strip_prefix("\\\\?\\").unwrap_or(&s).to_string());
+        s.to_lowercase()
+    }
+    if cfg!(windows) || mount.to_string_lossy().contains(':') {
+        let (p, m) = (norm(path), norm(mount));
+        let m = m.trim_end_matches('\\');
+        p == m || p.starts_with(&format!("{m}\\"))
+    } else {
+        path.starts_with(mount)
     }
 }
 
@@ -183,5 +204,14 @@ mod tests {
         let h = detect(Path::new("."));
         assert!(h.total_ram_mb > 0);
         assert!(h.cpu_cores >= 1);
+    }
+
+    #[test]
+    fn windows_paths_match_their_drive() {
+        let p = Path::new(r"\\?\C:\Users\I\AppData\Roaming\org.uautonomy\app");
+        assert!(path_on_mount(p, Path::new(r"C:\")));
+        assert!(path_on_mount(Path::new(r"c:\data"), Path::new(r"C:\")));
+        assert!(!path_on_mount(p, Path::new(r"D:\")));
+        assert!(path_on_mount(Path::new("/home/u/data"), Path::new("/")));
     }
 }

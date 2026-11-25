@@ -60,10 +60,39 @@ pub struct HitView {
 pub struct DocView {
     pub key: String,
     pub title: String,
-    /// Простий текст (Markdown для статей, очищений HTML для ZIM).
+    /// Markdown: заголовки, списки, таблиці, **жирний**, посилання
+    /// `[текст](card:<id>)` і `[текст](zim:<пакет>/<шлях>)`.
     pub body: String,
     pub source: String,
     pub reviewed: bool,
+    /// Хто має перевірити: `medic` (медичні статті й енциклопедії), `deminer`.
+    pub review_required: Option<String>,
+}
+
+/// Медична енциклопедія (WikiMed, Вікіпедія: медицина, MDWiki): її статті
+/// позначаємо «Не перевірено лікарем», як і медичні картки.
+fn medical_zim(pack: &str, z: &uautonomy_core::zim::Zim) -> bool {
+    let name = format!(
+        "{pack} {} {}",
+        z.metadata("Name").unwrap_or_default(),
+        z.metadata("Title").unwrap_or_default()
+    )
+    .to_lowercase();
+    ["medic", "mdwiki", "wikimed", "медицин"]
+        .iter()
+        .any(|w| name.contains(w))
+}
+
+/// Прибирає перший заголовок, якщо він повторює назву (її вже видно вгорі).
+fn drop_title_heading(md: &str, title: &str) -> String {
+    let t = md.trim_start();
+    if let Some(first) = t.lines().next() {
+        let h = first.trim_start_matches('#').trim();
+        if first.starts_with('#') && h.eq_ignore_ascii_case(title.trim()) {
+            return t[first.len()..].trim_start().to_string();
+        }
+    }
+    md.to_string()
 }
 
 pub struct LibraryInfo {
@@ -180,25 +209,31 @@ pub fn document(key: String) -> Option<DocView> {
         let (mime, data) = z.content(&e).ok()?;
         let raw = String::from_utf8_lossy(&data);
         let body = if mime.starts_with("text/html") {
-            text::html_to_text(&raw)
+            let base = e.url.clone();
+            text::html_to_markdown(&raw, &|href| {
+                text::resolve_zim_link(&base, href).map(|p| format!("zim:{pack}/{p}"))
+            })
         } else {
             raw.into_owned()
         };
         return Some(DocView {
             key: key.clone(),
+            body: drop_title_heading(&body, &e.title),
             title: e.title.clone(),
-            body,
             source: z.metadata("Title").unwrap_or_else(|| pack.to_string()),
             reviewed: false,
+            review_required: medical_zim(pack, z).then(|| "medic".to_string()),
         });
     }
     let d = s.library.doc(&key)?;
+    let body = d.markdown.clone().unwrap_or_else(|| d.text.clone());
     Some(DocView {
         key: d.key.clone(),
+        body: drop_title_heading(&body, &d.title),
         title: d.title.clone(),
-        body: d.text.clone(),
         source: d.source.clone(),
         reviewed: d.reviewed,
+        review_required: d.review_required.clone(),
     })
 }
 

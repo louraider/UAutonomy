@@ -350,6 +350,8 @@ const CARD_HINTS: &[(&str, &str)] = &[
     ("вдавив", "fa-choking"),
     ("кістка в горлі", "fa-choking"),
     ("опік", "fa-burns"),
+    ("окроп", "fa-burns"),
+    ("ошпар", "fa-burns"),
     ("обпік", "fa-burns"),
     ("обпек", "fa-burns"),
     ("судом", "fa-seizure"),
@@ -445,8 +447,16 @@ pub fn route(lib: &Library, question: &str) -> Route {
                 ids.push(id.to_string());
             }
         }
+        // Якщо тему вже впізнано за підказками, пошуком не доповнюємо:
+        // раніше на «опік окропом» поруч з опіками з'являлися «Травма
+        // голови» і реанімація дитини.
+        let hinted = !ids.is_empty();
         for p in lib.retrieve(question, 10) {
             if ids.len() >= 3 {
+                break;
+            }
+            if hinted {
+                // Впізнана тема: показуємо лише підказані картки.
                 break;
             }
             let Some(id) = p.key.strip_prefix("card:") else {
@@ -539,6 +549,27 @@ mod tests {
                 assert!(message.contains("103"));
             }
             r => panic!("{r:?}"),
+        }
+    }
+
+    #[test]
+    fn burn_question_shows_only_relevant_cards() {
+        let lib = crate::content::builtin_base();
+        for q in ["що робити при опіку окропом", "дитина обпеклася окропом"]
+        {
+            match route(&lib, q) {
+                Route::Cards { card_ids, .. } => {
+                    assert_eq!(
+                        card_ids.first().map(String::as_str),
+                        Some("fa-burns"),
+                        "{q}"
+                    );
+                    for bad in ["fa-head", "fa-cpr-child", "fa-cpr-adult"] {
+                        assert!(!card_ids.iter().any(|c| c == bad), "{q}: {card_ids:?}");
+                    }
+                }
+                r => panic!("{q}: {r:?}"),
+            }
         }
     }
 

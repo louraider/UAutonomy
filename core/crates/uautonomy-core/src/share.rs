@@ -103,21 +103,92 @@ impl ShareServer {
     }
 }
 
-/// IPv4-адреси локальної мережі, приватні першими.
+/// IPv4-адреси локальної мережі, найімовірніша першою.
+///
+/// Першою йде адреса, через яку йде маршрут за замовчуванням (справжня
+/// Wi-Fi чи Ethernet-мережа). Віртуальні адаптери (WSL, Hyper-V, VirtualBox,
+/// VMware, Docker, VPN) — останніми: інший телефон до них не дістанеться.
 pub fn local_ips() -> Vec<IpAddr> {
-    let mut ips: Vec<IpAddr> = if_addrs::get_if_addrs()
+    let ifaces: Vec<(String, IpAddr)> = if_addrs::get_if_addrs()
         .unwrap_or_default()
         .into_iter()
         .filter(|i| !i.is_loopback())
-        .map(|i| i.ip())
-        .filter(|ip| ip.is_ipv4())
+        .map(|i| (i.name.clone(), i.ip()))
+        .filter(|(_, ip)| ip.is_ipv4())
         .collect();
-    ips.sort_by_key(|ip| match ip {
-        IpAddr::V4(v4) if v4.is_private() => 0,
-        _ => 1,
-    });
-    ips.dedup();
-    ips
+    rank_ips(ifaces, default_route_ip())
+}
+
+/// Локальна адреса маршруту за замовчуванням. UDP `connect` нічого не
+/// надсилає, лише вибирає інтерфейс; без мережі повертає `None`.
+fn default_route_ip() -> Option<IpAddr> {
+    let s = std::net::UdpSocket::bind("0.0.0.0:0").ok()?;
+    s.connect("192.0.2.1:9").ok()?;
+    let ip = s.local_addr().ok()?.ip();
+    (!ip.is_unspecified() && !ip.is_loopback()).then_some(ip)
+}
+
+fn is_virtual_iface(name: &str) -> bool {
+    let n = name.to_lowercase();
+    [
+        "vethernet",
+        "wsl",
+        "hyper-v",
+        "virtualbox",
+        "vboxnet",
+        "vmware",
+        "vmnet",
+        "docker",
+        "br-",
+        "veth",
+        "virbr",
+        "tailscale",
+        "zerotier",
+        "wireguard",
+        "tun",
+        "tap",
+        "utun",
+        "loopback",
+        "npcap",
+        "bluetooth",
+    ]
+    .iter()
+    .any(|v| n.contains(v))
+}
+
+fn rank_ips(ifaces: Vec<(String, IpAddr)>, default: Option<IpAddr>) -> Vec<IpAddr> {
+    let mut v: Vec<(u8, IpAddr)> = ifaces
+        .into_iter()
+        .filter_map(|(name, ip)| {
+            let IpAddr::V4(v4) = ip else { return None };
+            if v4.is_link_local() || v4.is_unspecified() {
+                return None;
+            }
+            let o = v4.octets();
+            let rank = if Some(ip) == default && !is_virtual_iface(&name) {
+                0
+            } else if is_virtual_iface(&name) {
+                9
+            } else if o[0] == 192 && o[1] == 168 {
+                1
+            } else if o[0] == 10 {
+                2
+            } else if v4.is_private() {
+                3 // 172.16–31: часто віртуальні мережі
+            } else {
+                5
+            };
+            Some((rank, ip))
+        })
+        .collect();
+    v.sort_by_key(|(r, _)| *r);
+    let mut out: Vec<IpAddr> = Vec::new();
+    for (_, ip) in v {
+        if !out.contains(&ip) {
+            out.push(ip);
+        }
+    }
+    out
 }
 
 fn header(k: &str, v: &str) -> Header {
@@ -615,7 +686,7 @@ return `<div class=hit><a href='${href}'>${e(h.title)}</a><br><small>${e(h.snipp
 <p class=warn>У небезпеці телефонуйте 112. Неперевірені фахівцем матеріали позначені.</p>\
 <input id=q placeholder='Пошук: кровотеча, вода, укриття…' autofocus><div id=r></div>{maps_h}\
 <h2>Термінові картки</h2>{cards}{zim_h}{apps_h}<h2>Пакети на цьому пристрої</h2><ul>{packs}</ul>\
-<p class=src>У застосунку «Автономія»: Пакети → Отримати з іншого пристрою, і вставте цю адресу.</p>{script}</body></html>",
+<p class=src>У застосунку «Автономія»: вкладка «Пакети» → поле «Адреса каталогу або іншого пристрою» → вставте цю адресу і натисніть стрілку.</p>{script}</body></html>",
         name = esc(&st.device_name),
         maps_h = if st.store.installed().iter().any(|p| p.kind == PackKind::Map) {
             "<p><a href='/map'><b>🗺 Офлайн-карти</b></a></p>"
@@ -761,5 +832,31 @@ mod tests {
         assert_eq!(parse_range("bytes=11-", 10), None);
         assert_eq!(url_decode(&url_encode("Вода й сіль/1")), "Вода й сіль/1");
         assert_eq!(query_param("a=1&q=%D0%B2+x", "q").as_deref(), Some("в x"));
+    }
+
+    #[test]
+    fn lan_ip_beats_virtual_adapter() {
+        let ip = |s: &str| s.parse::<IpAddr>().unwrap();
+        let ifaces = vec![
+            (
+                "vEthernet (WSL (Hyper-V firewall))".to_string(),
+                ip("172.26.192.1"),
+            ),
+            ("Ethernet".to_string(), ip("10.10.10.32")),
+            ("Ethernet 2".to_string(), ip("169.254.10.1")),
+        ];
+        assert_eq!(
+            rank_ips(ifaces.clone(), None),
+            vec![ip("10.10.10.32"), ip("172.26.192.1")]
+        );
+        assert_eq!(
+            rank_ips(ifaces, Some(ip("10.10.10.32")))[0],
+            ip("10.10.10.32")
+        );
+        let hotspot = vec![
+            ("wlan0".to_string(), ip("172.20.10.2")),
+            ("ap0".to_string(), ip("192.168.43.1")),
+        ];
+        assert_eq!(rank_ips(hotspot, None)[0], ip("192.168.43.1"));
     }
 }

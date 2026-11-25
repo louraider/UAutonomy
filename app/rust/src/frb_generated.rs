@@ -1152,12 +1152,14 @@ impl SseDecode for crate::api::library::DocView {
         let mut var_body = <String>::sse_decode(deserializer);
         let mut var_source = <String>::sse_decode(deserializer);
         let mut var_reviewed = <bool>::sse_decode(deserializer);
+        let mut var_reviewRequired = <Option<String>>::sse_decode(deserializer);
         return crate::api::library::DocView {
             key: var_key,
             title: var_title,
             body: var_body,
             source: var_source,
             reviewed: var_reviewed,
+            review_required: var_reviewRequired,
         };
     }
 }
@@ -1787,6 +1789,7 @@ impl flutter_rust_bridge::IntoDart for crate::api::library::DocView {
             self.body.into_into_dart().into_dart(),
             self.source.into_into_dart().into_dart(),
             self.reviewed.into_into_dart().into_dart(),
+            self.review_required.into_into_dart().into_dart(),
         ]
         .into_dart()
     }
@@ -2195,6 +2198,7 @@ impl SseEncode for crate::api::library::DocView {
         <String>::sse_encode(self.body, serializer);
         <String>::sse_encode(self.source, serializer);
         <bool>::sse_encode(self.reviewed, serializer);
+        <Option<String>>::sse_encode(self.review_required, serializer);
     }
 }
 

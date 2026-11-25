@@ -7,6 +7,7 @@ import 'package:uautonomy/screens/library_screen.dart';
 import 'package:uautonomy/src/rust/api/ai.dart';
 import 'package:uautonomy/src/rust/api/device.dart';
 import 'package:uautonomy/src/rust/api/library.dart';
+import 'package:uautonomy/widgets/markdown_view.dart';
 
 /// Помічник: локальна модель відповідає з опорою на бібліотеку.
 class ChatScreen extends StatefulWidget {
@@ -28,6 +29,11 @@ class _ChatScreenState extends State<ChatScreen> {
   final _input = TextEditingController();
   final _answers = <AiAnswer>[];
   List<LocalModel> _models = const [];
+
+  /// Вибрана модель. Вибирається сама (рекомендована або єдина), а в
+  /// пам'ять завантажується при першому запитанні, щоб не забирати ОЗП,
+  /// поки помічником не користуються.
+  LocalModel? _selected;
   RecommendationView? _rec;
   bool _loading = false;
   bool _busy = false;
@@ -39,7 +45,10 @@ class _ChatScreenState extends State<ChatScreen> {
     widget.version.addListener(_refresh);
     _refresh();
     recommendation().then((r) {
-      if (mounted) setState(() => _rec = r);
+      if (mounted) {
+        setState(() => _rec = r);
+        _autoSelect();
+      }
     });
   }
 
@@ -51,19 +60,49 @@ class _ChatScreenState extends State<ChatScreen> {
     super.dispose();
   }
 
-  void _refresh() => setState(() => _models = localModels());
+  void _refresh() {
+    setState(() => _models = localModels());
+    _autoSelect();
+    recommendation().then((r) {
+      if (mounted) setState(() => _rec = r);
+    });
+  }
+
+  void _autoSelect() {
+    final sel = _selected;
+    if (sel != null && _models.any((m) => m.path == sel.path)) return;
+    if (_models.isEmpty) {
+      setState(() => _selected = null);
+      return;
+    }
+    final rec = _rec?.modelId;
+    setState(
+      () => _selected =
+          _models.where((m) => m.id == rec).firstOrNull ?? _models.first,
+    );
+  }
 
   Future<void> _load(LocalModel m) async {
     setState(() => _loading = true);
     try {
+      _selected = m;
       final before = await ramStatus();
       await _ai.load(m);
       final after = await ramStatus();
       final used = before.availableMb.toInt() - after.availableMb.toInt();
-      _diag =
-          'Завантажено за ${(_ai.lastLoadTime!.inMilliseconds / 1000).toStringAsFixed(1)} с · '
-          'зайняло ≈${(used / 1024).toStringAsFixed(1)} ГБ ОЗП · '
-          'вільно ${(after.availableMb.toInt() / 1024).toStringAsFixed(1)} ГБ';
+      final backend = _ai.backendName;
+      final layers = _ai.gpuLayers;
+      _diag = [
+        'Завантажено за ${(_ai.lastLoadTime!.inMilliseconds / 1000).toStringAsFixed(1)} с',
+        'зайняло ≈${(used / 1024).toStringAsFixed(1)} ГБ ОЗП',
+        'вільно ${(after.availableMb.toInt() / 1024).toStringAsFixed(1)} ГБ',
+        if (backend != null)
+          layers == null || layers <= 0
+              ? 'працює на: $backend (процесор)'
+              : 'працює на: $backend, $layers шарів на відеокарті',
+        if (_ai.gpuError != null)
+          'відеокарта недоступна: ${_ai.gpuError!.length > 160 ? '${_ai.gpuError!.substring(0, 160)}…' : _ai.gpuError}',
+      ].join(' · ');
     } catch (e) {
       if (mounted) showError(context, 'Не вдалося запустити модель: $e');
     } finally {
@@ -91,11 +130,15 @@ class _ChatScreenState extends State<ChatScreen> {
     }
   }
 
-  void _send() {
+  Future<void> _send() async {
     final q = _input.text.trim();
     if (q.isEmpty || _busy) return;
     _input.clear();
     setState(() => _busy = true);
+    final sel = _selected;
+    if (!_ai.isLoaded && sel != null && askRoute(question: q).mode != 'cards') {
+      await _load(sel);
+    }
     _ai.ask(q).listen((a) {
       if (!mounted) return;
       setState(() {
@@ -114,7 +157,7 @@ class _ChatScreenState extends State<ChatScreen> {
           Expanded(
             child: DropdownButton<String>(
               isExpanded: true,
-              value: current?.path,
+              value: (current ?? _selected)?.path,
               hint: const Text('Оберіть модель'),
               items: [
                 for (final m in _models)
@@ -215,7 +258,7 @@ class _ChatScreenState extends State<ChatScreen> {
                   textInputAction: TextInputAction.send,
                   onSubmitted: (_) => _send(),
                   decoration: InputDecoration(
-                    hintText: _ai.isLoaded
+                    hintText: _ai.isLoaded || _selected != null
                         ? 'Запитайте, наприклад: як очистити воду?'
                         : 'Медичні картки знайдуться і без моделі',
                     border: const OutlineInputBorder(),
@@ -284,7 +327,7 @@ class _AnswerTile extends StatelessWidget {
               child: CircularProgressIndicator(),
             )
           else
-            SelectableText(answer.text.toString(), style: t.bodyLarge),
+            MarkdownView(data: cleanAiText(answer.text.toString())),
           if (answer.done &&
               answer.error == null &&
               answer.firstTokenMs != null)

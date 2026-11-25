@@ -26,11 +26,27 @@ pub fn base_library(
     Ok(lib)
 }
 
+/// Короткі назви джерел за id (`content/sources.json` → `short`).
+pub fn source_names() -> &'static std::collections::HashMap<String, String> {
+    static NAMES: std::sync::OnceLock<std::collections::HashMap<String, String>> =
+        std::sync::OnceLock::new();
+    NAMES.get_or_init(|| {
+        serde_json::from_str(include_str!("../assets/base/sources.json")).unwrap_or_default()
+    })
+}
+
+/// Джерела статті для читача: назви замість внутрішніх id (`moz-water`).
+/// Невідомі id не показуємо; якщо не лишилось нічого — `fallback`.
 fn article_source(a: &Article, fallback: &str) -> String {
-    if a.source_ids.is_empty() {
+    let names: Vec<&str> = a
+        .source_ids
+        .iter()
+        .filter_map(|id| source_names().get(id).map(String::as_str))
+        .collect();
+    if names.is_empty() {
         fallback.to_string()
     } else {
-        a.source_ids.join(", ")
+        names.join("; ")
     }
 }
 
@@ -91,10 +107,10 @@ mod tests {
     fn loads_base_and_packs() {
         let mut lib = base_library(
             r#"[{"id":"b1","category":"first_aid","title":"Опік","steps":["Охолодіть"],"source":"тест"}]"#,
-            &[("w".into(), "---\nid: water\ntitle: Вода\nsource_ids: [dsns]\n---\nКип'ятіть.".into())],
+            &[("w".into(), "---\nid: water\ntitle: Вода\nsource_ids: [moz-water, nonexistent]\n---\nКип'ятіть.".into())],
         )
         .unwrap();
-        assert_eq!(lib.search("вода", 3)[0].source, "dsns");
+        assert_eq!(lib.search("вода", 3)[0].source, "МОЗ: знезараження води");
         let t = tempfile::tempdir().unwrap();
         let src = t.path().join("p");
         crate::store::tests::sample_pack(&src, "pocket");
