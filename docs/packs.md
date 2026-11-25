@@ -99,7 +99,11 @@ cargo run -p uautonomy-hub -- serve   --data /srv/autonomy --app avtonomiia.apk
 немає. Пакети збирає `tools/maps/build_maps.sh` у GitHub Actions
 (workflow «Пакети»):
 
-1. OSM України з Geofabrik.
+1. OSM України з Geofabrik (`tools/maps/fetch_ukraine.sh`). Geofabrik
+   іноді не пускає раннери GitHub; тоді скрипт бере всі області з
+   download.openstreetmap.fr (цілого файлу України там немає), звіряє MD5
+   і зливає їх `osmium merge` + `osmium time-filter` (по одній, найновішій
+   версії кожного об'єкта).
 2. Карти повні, як у відкритому OSM: дані й так публічні, тому нічого не
    прибираємо. Фільтр `tools/maps/exclude-tags.txt` лишився необов'язковим
    (`FILTER_INFRA=1`, у workflow — галочка `filter_infra`).
@@ -126,6 +130,16 @@ download.kiwix.org, а розмір і SHA-256 читає з `.meta4`. Файл�
 звіряє SHA-256 і відкриває нашим читачем (`uautonomy-hub zim-check`).
 Якщо якоїсь назви на Kiwix немає, запис пропускається, а в журналі
 з'являються схожі назви.
+
+Оновлення автоматичні: щопонеділка (05:23 UTC) workflow за розкладом
+порівнює найновіші ZIM із тими, що в опублікованому `catalog.json`
+(`tools/packs/zim_changes.py`, за SHA-256). Якщо Kiwix випустив новий
+місяць, збираються лише енциклопедії: каталог перепідписується ключем
+`PACK_SIGNING_KEY` і викладається у випуск `packs`, а карти й модель
+переходять із попереднього каталогу без перезбирання. Без змін нічого не
+збирається і не публікується. Вручну те саме: Run workflow з `regions=none`.
+GitHub вимикає розклад, якщо в репозиторії 60 днів не було комітів; тоді
+його вмикають кнопкою «Enable workflow» в Actions.
 
 Бібліотеки zimgit (water, medicine, post-disaster) у каталог не входять: у
 них дві HTML-сторінки, решта — PDF, а наш пошук і ШІ поки читають лише HTML.
