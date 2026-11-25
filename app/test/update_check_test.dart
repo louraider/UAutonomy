@@ -40,6 +40,7 @@ void main() {
 
   test('локальна збірка нових версій не шукає', () {
     expect(currentBuild, 0);
+    expect(distribution, 'site');
     expect(updateCheckSupported, isFalse);
   });
 }

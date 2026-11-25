@@ -115,7 +115,9 @@ jobs:
       # Номер запуску CI = номер збірки: з нього Android бере versionCode
       # (плюс 1000 × ABI), а застосунок порівнює його з version.json релізу,
       # щоб сказати людині про нову версію (lib/update/update_check.dart).
-      - run: flutter build apk --release --split-per-abi --split-debug-info=build/symbols --build-number=${{ github.run_number }} --dart-define=UAUTONOMY_BUILD=${{ github.run_number }}
+      # Збірки для Google Play і Microsoft Store мають задавати
+      # UAUTONOMY_DIST=play / msstore: там оновлює магазин, і перевірки немає.
+      - run: flutter build apk --release --split-per-abi --split-debug-info=build/symbols --build-number=${{ github.run_number }} --dart-define=UAUTONOMY_BUILD=${{ github.run_number }} --dart-define=UAUTONOMY_DIST=site
         env:
           UAUTONOMY_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
       - name: Сертифікат підпису і розмір APK
@@ -224,7 +226,7 @@ jobs:
           channel: stable
           cache: true
       - run: flutter pub get
-      - run: flutter build windows --release --build-number=${{ github.run_number }} --dart-define=UAUTONOMY_BUILD=${{ github.run_number }}
+      - run: flutter build windows --release --build-number=${{ github.run_number }} --dart-define=UAUTONOMY_BUILD=${{ github.run_number }} --dart-define=UAUTONOMY_DIST=site
       - name: Модулі llama.cpp у збірці (чи є Vulkan)
         shell: pwsh
         run: Get-ChildItem build/windows/x64/runner/Release -Recurse -Include *.dll | Select-Object Name, Length | Format-Table -AutoSize

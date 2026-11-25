@@ -32,10 +32,22 @@ class UpdateInfo {
   final String url;
 }
 
-/// Застосунок ставлять не з магазину (APK, інсталятор Windows), тож про нову
-/// версію ніхто, крім нього самого, не скаже. На iPhone оновлює App Store.
+/// Звідки людина взяла застосунок: `site` (APK з сайту, інсталятор
+/// Windows, ZIP) або назва магазину (`play`, `msstore`, `appstore`).
+/// Збірки для магазинів задають `--dart-define=UAUTONOMY_DIST=<магазин>`.
+const String distribution = String.fromEnvironment(
+  'UAUTONOMY_DIST',
+  defaultValue: 'site',
+);
+
+/// Застосунок із сайту ставлять не з магазину, тож про нову версію ніхто,
+/// крім нього самого, не скаже. Збірки з магазинів оновлює магазин, а Google
+/// Play прямо забороняє оновлюватися повз нього, тож там перевірки немає. На
+/// iPhone оновлює App Store.
 bool get updateCheckSupported =>
-    currentBuild > 0 && (Platform.isAndroid || Platform.isWindows);
+    currentBuild > 0 &&
+    distribution == 'site' &&
+    (Platform.isAndroid || Platform.isWindows);
 
 /// Розбирає `version.json` і повертає оновлення, якщо воно новіше за
 /// [build] і людина не відклала саме його ([dismissed]).
