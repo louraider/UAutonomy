@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:uautonomy/share/windows_firewall.dart';
 
@@ -54,4 +56,19 @@ void main() {
       FirewallVerdict.blocked,
     );
   });
+
+  test(
+    'на Windows справді читає профіль мережі й правила',
+    () async {
+      const exe = String.fromEnvironment('FIREWALL_EXE');
+      final s = await checkWindowsFirewall(
+        exe: exe.isEmpty ? Platform.resolvedExecutable : exe,
+      );
+      expect(s, isNotNull);
+      // ignore: avoid_print
+      print('FIREWALL ${s!.verdict} ${s.categories}');
+      expect(s.categories, isNotEmpty);
+    },
+    skip: !Platform.isWindows,
+  );
 }
