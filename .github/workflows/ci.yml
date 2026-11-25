@@ -290,9 +290,24 @@ jobs:
       - run: flutter pub get
       - name: Xcode
         run: xcodebuild -version && xcrun simctl list runtimes
+      # Entitlement increased-memory-limit вимагає профілю з командою Apple
+      # (Xcode: «has entitlements that require signing with a development
+      # certificate»). Збірка без підпису однаково не несе entitlements,
+      # тож у CI прибираємо лише цей рядок; у підписаній збірці він лишається.
+      - name: Без entitlements (немає підпису)
+        run: sed -i '' '/CODE_SIGN_ENTITLEMENTS = Runner\/Runner.entitlements;/d' ios/Runner.xcodeproj/project.pbxproj
       # Release-збірка для справжнього iPhone (arm64), без підпису: перевіряє,
       # що Rust-ядро, llama.cpp (Metal, через SwiftPM) і плагіни лінкуються.
-      - run: flutter build ios --release --no-codesign
+      # Flutter ховає помилки Xcode за загальною порадою про підпис, тож
+      # пишемо повний журнал і показуємо з нього рядки з помилками.
+      - name: flutter build ios --release --no-codesign
+        run: |
+          set +e
+          flutter build ios --release --no-codesign -v > "$RUNNER_TEMP/ios-build.log" 2>&1
+          code=$?
+          grep -E "error:|\*\* BUILD|requires a development team|entitlements" "$RUNNER_TEMP/ios-build.log" | sort -u | head -60
+          [ $code -eq 0 ] || tail -40 "$RUNNER_TEMP/ios-build.log"
+          exit $code
       - name: Розмір і вміст збірки
         working-directory: app/build/ios/iphoneos
         run: |
