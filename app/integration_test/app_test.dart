@@ -34,6 +34,11 @@ const aiTests = bool.fromEnvironment('AI_TESTS');
 const tinyModelUrl =
     'https://huggingface.co/ggml-org/models/resolve/main/tinyllamas/stories260K.gguf';
 
+/// Інтеграційні тести за замовчуванням не мають ліміту часу, і зависання
+/// тягнулося до таймауту CI (75 хв) без жодного звіту. З лімітом тест
+/// падає зі стеком, де саме він зупинився.
+const _perTest = Timeout(Duration(minutes: 3));
+
 /// `pumpAndSettle` зависає на нескінченних анімаціях (індикатори
 /// завантаження), тому чекаємо фіксований час.
 Future<void> settle(WidgetTester tester, [int ms = 800]) async {
@@ -100,7 +105,7 @@ void main() {
 
     await tester.pageBack();
     await settle(tester);
-  });
+  }, timeout: _perTest);
 
   testWidgets('Усі вкладки відкриваються без помилок', (tester) async {
     await tester.pumpWidget(const UAutonomyApp());
@@ -113,7 +118,7 @@ void main() {
 
     await openTab(tester, 'Пакети');
     expect(find.text(officialCatalogUrl), findsOneWidget);
-  });
+  }, timeout: _perTest);
 
   testWidgets('Обмін: сервер вмикається і вимикається', (tester) async {
     await tester.pumpWidget(const UAutonomyApp());
@@ -157,7 +162,7 @@ void main() {
     await tester.tap(find.text('Вимкнути обмін'));
     await settle(tester, 1000);
     expect(find.text('Увімкнути обмін'), findsOneWidget);
-  });
+  }, timeout: _perTest);
 
   testWidgets(
     'Карта Києва з офіційного каталогу',
