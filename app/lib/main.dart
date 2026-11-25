@@ -7,6 +7,7 @@ import 'package:uautonomy/screens/packs_screen.dart';
 import 'package:uautonomy/screens/share_screen.dart';
 import 'package:uautonomy/src/rust/api/library.dart';
 import 'package:uautonomy/src/rust/frb_generated.dart';
+import 'package:uautonomy/theme.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -28,11 +29,11 @@ class UAutonomyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const seed = Color(0xFF0057B7);
     return MaterialApp(
       title: 'Автономія',
-      theme: ThemeData(colorSchemeSeed: seed),
-      darkTheme: ThemeData(colorSchemeSeed: seed, brightness: Brightness.dark),
+      debugShowCheckedModeBanner: false,
+      theme: buildTheme(Brightness.light),
+      darkTheme: buildTheme(Brightness.dark),
       home: HomeScreen(startupError: startupError),
     );
   }
@@ -85,10 +86,26 @@ class _HomeScreenState extends State<HomeScreen> {
         selectedIndex: _tab,
         onDestinationSelected: _goTo,
         destinations: const [
-          NavigationDestination(icon: Icon(Icons.menu_book), label: 'Довідка'),
-          NavigationDestination(icon: Icon(Icons.forum), label: 'Помічник'),
-          NavigationDestination(icon: Icon(Icons.map), label: 'Карти'),
-          NavigationDestination(icon: Icon(Icons.download), label: 'Пакети'),
+          NavigationDestination(
+            icon: Icon(Icons.menu_book_outlined),
+            selectedIcon: Icon(Icons.menu_book),
+            label: 'Довідка',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.forum_outlined),
+            selectedIcon: Icon(Icons.forum),
+            label: 'Помічник',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.map_outlined),
+            selectedIcon: Icon(Icons.map),
+            label: 'Карти',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.download_outlined),
+            selectedIcon: Icon(Icons.download),
+            label: 'Пакети',
+          ),
           NavigationDestination(
             icon: Icon(Icons.wifi_tethering),
             label: 'Обмін',

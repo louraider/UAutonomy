@@ -8,6 +8,7 @@ import 'package:uautonomy/legal/terms.dart';
 import 'package:uautonomy/screens/common.dart';
 import 'package:uautonomy/src/rust/api/device.dart';
 import 'package:uautonomy/src/rust/api/packs.dart';
+import 'package:uautonomy/widgets/brand.dart';
 
 /// Офіційний каталог: пакети лежать у GitHub Releases проєкту (тег `packs`).
 const officialCatalogUrl =
@@ -352,105 +353,110 @@ class _PacksScreenState extends State<PacksScreen> {
   @override
   Widget build(BuildContext context) {
     final t = Theme.of(context).textTheme;
-    return ListView(
-      children: [
-        _deviceCard(),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: Text('На пристрої', style: t.titleMedium),
-        ),
-        if (_installed.isEmpty)
-          const ListTile(title: Text('Лише базовий пакет (термінові картки)')),
-        for (final p in _installed) _packTile(p, fromCatalog: false),
-        if (_busyId == 'import') ...[
+    return ContentWidth(
+      child: ListView(
+        children: [
+          const TabHeader(title: 'Пакети'),
+          _deviceCard(),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: LinearProgressIndicator(value: _fraction),
+            child: Text('На пристрої', style: t.titleMedium),
+          ),
+          if (_installed.isEmpty)
+            const ListTile(
+              title: Text('Лише базовий пакет (термінові картки)'),
+            ),
+          for (final p in _installed) _packTile(p, fromCatalog: false),
+          if (_busyId == 'import') ...[
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: LinearProgressIndicator(value: _fraction),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
+              child: Text(_progressText()),
+            ),
+          ],
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            child: Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                OutlinedButton.icon(
+                  onPressed: _busyId != null ? null : _importFile,
+                  icon: const Icon(Icons.usb),
+                  label: const Text('З флешки чи файлу'),
+                ),
+                if (!Platform.isAndroid)
+                  OutlinedButton.icon(
+                    onPressed: _busyId != null ? null : _importFolder,
+                    icon: const Icon(Icons.folder_open),
+                    label: const Text('З теки'),
+                  ),
+              ],
+            ),
+          ),
+          const Divider(),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+            child: Text('Завантажити', style: t.titleMedium),
           ),
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
-            child: Text(_progressText()),
-          ),
-        ],
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          child: Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              OutlinedButton.icon(
-                onPressed: _busyId != null ? null : _importFile,
-                icon: const Icon(Icons.usb),
-                label: const Text('З флешки чи файлу'),
-              ),
-              if (!Platform.isAndroid)
-                OutlinedButton.icon(
-                  onPressed: _busyId != null ? null : _importFolder,
-                  icon: const Icon(Icons.folder_open),
-                  label: const Text('З теки'),
-                ),
-            ],
-          ),
-        ),
-        const Divider(),
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-          child: Text('Завантажити', style: t.titleMedium),
-        ),
-        Padding(
-          padding: const EdgeInsets.all(16),
-          child: Row(
-            children: [
-              Expanded(
-                child: TextField(
-                  controller: _url,
-                  keyboardType: TextInputType.url,
-                  decoration: const InputDecoration(
-                    labelText: 'Адреса каталогу або іншого пристрою',
-                    hintText: 'http://192.168.43.1:8642',
-                    border: OutlineInputBorder(),
-                  ),
-                  onSubmitted: (_) => _fetch(),
-                ),
-              ),
-              const SizedBox(width: 8),
-              _fetching
-                  ? const CircularProgressIndicator()
-                  : IconButton.filled(
-                      tooltip: 'Відкрити каталог',
-                      icon: const Icon(Icons.arrow_forward),
-                      onPressed: _fetch,
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _url,
+                    keyboardType: TextInputType.url,
+                    decoration: const InputDecoration(
+                      labelText: 'Адреса каталогу або іншого пристрою',
+                      hintText: 'http://192.168.43.1:8642',
+                      border: OutlineInputBorder(),
                     ),
-            ],
+                    onSubmitted: (_) => _fetch(),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                _fetching
+                    ? const CircularProgressIndicator()
+                    : IconButton.filled(
+                        tooltip: 'Відкрити каталог',
+                        icon: const Icon(Icons.arrow_forward),
+                        onPressed: _fetch,
+                      ),
+              ],
+            ),
           ),
-        ),
-        const Padding(
-          padding: EdgeInsets.symmetric(horizontal: 16),
-          child: Text(
-            'Адресу іншого телефона чи ПК з «Автономією» видно на його вкладці «Обмін» (там є QR-код). '
-            'Перерване завантаження продовжиться з місця зупинки.',
+          const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 16),
+            child: Text(
+              'Адресу іншого телефона чи ПК з «Автономією» видно на його вкладці «Обмін» (там є QR-код). '
+              'Перерване завантаження продовжиться з місця зупинки.',
+            ),
           ),
-        ),
-        if (_catalogTrust != null && _catalog.isNotEmpty)
+          if (_catalogTrust != null && _catalog.isNotEmpty)
+            ListTile(
+              leading: const Icon(Icons.verified_user),
+              title: Text(_catalogTrust!),
+            ),
+          for (final p in _catalog) _packTile(p, fromCatalog: true),
+          const Divider(),
           ListTile(
-            leading: const Icon(Icons.verified_user),
-            title: Text(_catalogTrust!),
+            leading: const Icon(Icons.gavel),
+            title: const Text('Умови використання'),
+            subtitle: const Text(
+              'Обмеження для моделей ШІ, медичне застереження, ліцензії',
+            ),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(builder: (_) => const TermsScreen()),
+            ),
           ),
-        for (final p in _catalog) _packTile(p, fromCatalog: true),
-        const Divider(),
-        ListTile(
-          leading: const Icon(Icons.gavel),
-          title: const Text('Умови використання'),
-          subtitle: const Text(
-            'Обмеження для моделей ШІ, медичне застереження, ліцензії',
-          ),
-          trailing: const Icon(Icons.chevron_right),
-          onTap: () => Navigator.of(
-            context,
-          ).push(MaterialPageRoute<void>(builder: (_) => const TermsScreen())),
-        ),
-        const SizedBox(height: 24),
-      ],
+          const SizedBox(height: 24),
+        ],
+      ),
     );
   }
 }

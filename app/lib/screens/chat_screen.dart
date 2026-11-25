@@ -8,6 +8,7 @@ import 'package:uautonomy/screens/library_screen.dart';
 import 'package:uautonomy/src/rust/api/ai.dart';
 import 'package:uautonomy/src/rust/api/device.dart';
 import 'package:uautonomy/src/rust/api/library.dart';
+import 'package:uautonomy/widgets/brand.dart';
 import 'package:uautonomy/widgets/markdown_view.dart';
 
 /// Помічник: локальна модель відповідає з опорою на бібліотеку.
@@ -184,18 +185,6 @@ class _ChatScreenState extends State<ChatScreen> {
                   : (p) => _load(_models.firstWhere((m) => m.path == p)),
             ),
           ),
-          IconButton(
-            tooltip: 'Умови використання',
-            icon: const Icon(Icons.gavel),
-            onPressed: () => Navigator.of(context).push(
-              MaterialPageRoute<void>(builder: (_) => const TermsScreen()),
-            ),
-          ),
-          IconButton(
-            tooltip: 'Додати свою модель з файлу',
-            icon: const Icon(Icons.upload_file),
-            onPressed: _loading ? null : _importModel,
-          ),
         ],
       ),
     );
@@ -238,6 +227,33 @@ class _ChatScreenState extends State<ChatScreen> {
 
   @override
   Widget build(BuildContext context) {
+    return ContentWidth(
+      child: Column(
+        children: [
+          TabHeader(
+            title: 'Помічник',
+            trailing: [
+              IconButton(
+                tooltip: 'Умови використання',
+                icon: const Icon(Icons.gavel),
+                onPressed: () => Navigator.of(context).push(
+                  MaterialPageRoute<void>(builder: (_) => const TermsScreen()),
+                ),
+              ),
+              IconButton(
+                tooltip: 'Додати свою модель з файлу',
+                icon: const Icon(Icons.upload_file),
+                onPressed: _loading ? null : _importModel,
+              ),
+            ],
+          ),
+          Expanded(child: _body()),
+        ],
+      ),
+    );
+  }
+
+  Widget _body() {
     if (_models.isEmpty) return _noModel();
     return Column(
       children: [
@@ -246,7 +262,7 @@ class _ChatScreenState extends State<ChatScreen> {
           padding: EdgeInsets.symmetric(horizontal: 16, vertical: 4),
           child: Text(
             'Відповіді ШІ можуть містити помилки. Завжди перевіряйте за джерелом. $emergencyNote',
-            style: TextStyle(fontSize: 12),
+            style: TextStyle(fontSize: 12.5, height: 1.35),
           ),
         ),
         if (_loading) const LinearProgressIndicator(),

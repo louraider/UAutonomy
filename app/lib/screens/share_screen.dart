@@ -7,6 +7,7 @@ import 'package:qr_flutter/qr_flutter.dart';
 import 'package:uautonomy/screens/common.dart';
 import 'package:uautonomy/share/windows_firewall.dart';
 import 'package:uautonomy/src/rust/api/share.dart';
+import 'package:uautonomy/widgets/brand.dart';
 
 const _channel = MethodChannel('org.uautonomy/app');
 
@@ -162,64 +163,68 @@ class _ShareScreenState extends State<ShareScreen> {
   Widget build(BuildContext context) {
     final t = Theme.of(context).textTheme;
     final url = _info.urls.isEmpty ? null : _info.urls.first;
-    return ListView(
-      padding: const EdgeInsets.all(16),
-      children: [
-        Text('Поділитися без інтернету', style: t.titleLarge),
-        const SizedBox(height: 8),
-        Text(
-          Platform.isAndroid || Platform.isIOS
-              ? '1. Увімкніть точку доступу на цьому телефоні або підключіться до спільного Wi-Fi.\n'
-                    '2. Натисніть «Увімкнути обмін».\n'
-                    '3. Інший телефон сканує QR-код камерою й відкриває бібліотеку в браузері, '
-                    'може завантажити застосунок і пакети. На iPhone і ноутбуках у браузері '
-                    'працюють пошук, картки й офлайн-карти завантажених областей.'
-              : '1. Підключіть цей комп\'ютер і телефон до одного Wi-Fi чи роутера '
-                    '(або підключіть комп\'ютер до точки доступу телефона).\n'
-                    '2. Натисніть «Увімкнути обмін». Якщо Windows запитає дозвіл для '
-                    'брандмауера, позначте обидві галочки (приватні й загальнодоступні '
-                    'мережі), інакше телефон може не відкрити сторінку.\n'
-                    '3. Телефон сканує QR-код камерою й відкриває бібліотеку в браузері, '
-                    'може завантажити застосунок і пакети. На iPhone у браузері працюють '
-                    'пошук, картки й офлайн-карти завантажених областей.',
-        ),
-        const SizedBox(height: 16),
-        FilledButton.icon(
-          onPressed: _busy ? null : _toggle,
-          icon: Icon(_info.running ? Icons.stop : Icons.wifi_tethering),
-          label: Text(_info.running ? 'Вимкнути обмін' : 'Увімкнути обмін'),
-        ),
-        if (_info.running && _firewall != null) ...[
+    return ContentWidth(
+      child: ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
+          Text('Обмін', style: t.headlineMedium),
+          const SizedBox(height: 4),
+          Text('Поділитися без інтернету', style: t.titleMedium),
+          const SizedBox(height: 12),
+          Text(
+            Platform.isAndroid || Platform.isIOS
+                ? '1. Увімкніть точку доступу на цьому телефоні або підключіться до спільного Wi-Fi.\n'
+                      '2. Натисніть «Увімкнути обмін».\n'
+                      '3. Інший телефон сканує QR-код камерою й відкриває бібліотеку в браузері, '
+                      'може завантажити застосунок і пакети. На iPhone і ноутбуках у браузері '
+                      'працюють пошук, картки й офлайн-карти завантажених областей.'
+                : '1. Підключіть цей комп\'ютер і телефон до одного Wi-Fi чи роутера '
+                      '(або підключіть комп\'ютер до точки доступу телефона).\n'
+                      '2. Натисніть «Увімкнути обмін». Якщо Windows запитає дозвіл для '
+                      'брандмауера, позначте обидві галочки (приватні й загальнодоступні '
+                      'мережі), інакше телефон може не відкрити сторінку.\n'
+                      '3. Телефон сканує QR-код камерою й відкриває бібліотеку в браузері, '
+                      'може завантажити застосунок і пакети. На iPhone у браузері працюють '
+                      'пошук, картки й офлайн-карти завантажених областей.',
+          ),
           const SizedBox(height: 16),
-          _firewallNote(context),
-        ],
-        const SizedBox(height: 24),
-        if (_info.running && url == null)
-          const Text(
-            'Обмін увімкнено, але пристрій не підключений до жодної мережі. '
-            'Увімкніть точку доступу, Wi-Fi чи кабель.',
+          FilledButton.icon(
+            onPressed: _busy ? null : _toggle,
+            icon: Icon(_info.running ? Icons.stop : Icons.wifi_tethering),
+            label: Text(_info.running ? 'Вимкнути обмін' : 'Увімкнути обмін'),
           ),
-        if (url != null) ...[
-          Center(
-            child: Container(
-              color: Colors.white,
-              padding: const EdgeInsets.all(12),
-              child: QrImageView(data: url, size: 240),
+          if (_info.running && _firewall != null) ...[
+            const SizedBox(height: 16),
+            _firewallNote(context),
+          ],
+          const SizedBox(height: 24),
+          if (_info.running && url == null)
+            const Text(
+              'Обмін увімкнено, але пристрій не підключений до жодної мережі. '
+              'Увімкніть точку доступу, Wi-Fi чи кабель.',
             ),
-          ),
-          const SizedBox(height: 12),
-          Center(child: SelectableText(url, style: t.titleMedium)),
-          for (final other in _info.urls.skip(1))
-            Center(child: SelectableText(other, style: t.bodySmall)),
-          const SizedBox(height: 12),
-          const Text(
-            'Якщо QR не відкривається, спробуйте іншу адресу зі списку: перша — '
-            'найімовірніша, віртуальні адаптери (WSL, VPN) у кінці.\n'
-            'Інший пристрій з «Автономією»: вкладка «Пакети» → поле «Адреса каталогу '
-            'або іншого пристрою» → вставте цю адресу → стрілка → завантажте потрібне.',
-          ),
+          if (url != null) ...[
+            Center(
+              child: Container(
+                color: Colors.white,
+                padding: const EdgeInsets.all(12),
+                child: QrImageView(data: url, size: 240),
+              ),
+            ),
+            const SizedBox(height: 12),
+            Center(child: SelectableText(url, style: t.titleMedium)),
+            for (final other in _info.urls.skip(1))
+              Center(child: SelectableText(other, style: t.bodySmall)),
+            const SizedBox(height: 12),
+            const Text(
+              'Якщо QR не відкривається, спробуйте іншу адресу зі списку: перша — '
+              'найімовірніша, віртуальні адаптери (WSL, VPN) у кінці.\n'
+              'Інший пристрій з «Автономією»: вкладка «Пакети» → поле «Адреса каталогу '
+              'або іншого пристрою» → вставте цю адресу → стрілка → завантажте потрібне.',
+            ),
+          ],
         ],
-      ],
+      ),
     );
   }
 }
