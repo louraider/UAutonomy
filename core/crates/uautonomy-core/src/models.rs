@@ -46,6 +46,9 @@ pub struct ModelSpec {
     pub pack_id: Option<String>,
     #[serde(default)]
     pub notes: String,
+    /// Лише для ПК: на телефонах не пропонується зовсім.
+    #[serde(default)]
+    pub desktop_only: bool,
 }
 
 /// Вбудований каталог. Розміри приблизні (квантизація Q4); точні байти та
@@ -54,19 +57,19 @@ pub const DEFAULT_CATALOG: &str = r#"[
   {"id":"gemma-4-e2b-it-q4","title":"Gemma 4 E2B (телефон)","family":"gemma4","format":"gguf",
    "size_bytes":3200000000,"min_ram_mb":3500,"recommended_ram_mb":6000,"context_size":4096,
    "license":"Apache-2.0","pack_id":"model-gemma-4-e2b-it-q4",
-   "notes":"Базова модель для телефонів."},
-  {"id":"gemma-4-e4b-it-q4","title":"Gemma 4 E4B (ПК, сильні телефони)","family":"gemma4","format":"gguf",
-   "size_bytes":5000000000,"min_ram_mb":7000,"recommended_ram_mb":12000,"context_size":8192,
-   "license":"Apache-2.0","pack_id":"model-gemma-4-e4b-it-q4",
-   "notes":"Основна модель для ПК."},
-  {"id":"gemma-4-26b-a4b-it-q4","title":"Gemma 4 26B A4B (потужний ПК)","family":"gemma4","format":"gguf",
-   "size_bytes":16000000000,"min_ram_mb":24000,"recommended_ram_mb":32000,"context_size":8192,
-   "license":"Apache-2.0","pack_id":"model-gemma-4-26b-a4b-it-q4",
-   "notes":"Для ПК з 32+ ГБ ОЗП."},
-  {"id":"mamaylm-gemma-3-4b-q4","title":"MamayLM 4B (тест)","family":"mamaylm","format":"gguf",
-   "size_bytes":2500000000,"min_ram_mb":4000,"recommended_ram_mb":99999999,"context_size":4096,
-   "license":"Gemma Terms of Use","pack_id":"model-mamaylm-4b-q4",
-   "notes":"Для порівняльних тестів; за замовчуванням не пропонується."}
+   "notes":"Базова модель для телефонів і запасна для ПК з малою пам'яттю."},
+  {"id":"gemma-4-e4b-it-q4","title":"Gemma 4 E4B (слабкий ПК)","family":"gemma4","format":"gguf",
+   "size_bytes":4977171584,"min_ram_mb":7000,"recommended_ram_mb":8000,"context_size":8192,
+   "license":"Apache-2.0","pack_id":"model-gemma-4-e4b-it-q4","desktop_only":true,
+   "notes":"Легка модель для ПК з 8–15 ГБ ОЗП."},
+  {"id":"mamaylm-gemma-3-12b-it-q4","title":"MamayLM 12B (ПК)","family":"mamaylm","format":"gguf",
+   "size_bytes":7300778080,"min_ram_mb":12000,"recommended_ram_mb":16000,"context_size":8192,
+   "license":"Gemma Terms of Use","pack_id":"model-mamaylm-gemma-3-12b-it-q4","desktop_only":true,
+   "notes":"Основна модель для ПК з 16+ ГБ ОЗП: українська MamayLM v1.0 (INSAIT) на Gemma 3, найкраща в наших тестах. Умови: ai.google.dev/gemma/terms."},
+  {"id":"gemma-4-26b-a4b-it-q4","title":"Gemma 4 26B A4B (лише вручну)","family":"gemma4","format":"gguf",
+   "size_bytes":16000000000,"min_ram_mb":24000,"recommended_ram_mb":99999999,"context_size":8192,
+   "license":"Apache-2.0","pack_id":"model-gemma-4-26b-a4b-it-q4","desktop_only":true,
+   "notes":"Не рекомендується: у тестах лише трохи краща за MamayLM 12B, а займає 17 ГБ і не влазить у 16 ГБ відеопам'яті."}
 ]"#;
 
 pub fn default_catalog() -> Vec<ModelSpec> {

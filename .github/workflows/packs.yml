@@ -3,6 +3,7 @@ name: Пакети (карти, моделі) → GitHub Releases
 # Публікація: Actions → «Пакети» → Run workflow. Файли лягають у випуск
 # з тегом `packs`, звідки їх бере застосунок (каталог за замовчуванням).
 # На PR, що змінює інструменти карт, збирається лише Київ без публікації.
+# Моделі ШІ описані в tools/packs/models.json.
 # Щопонеділка за розкладом перевіряються нові версії енциклопедій Kiwix:
 # якщо є — каталог перепідписується з ними (карти й модель не чіпаються,
 # лишаються з попереднього каталогу); якщо немає — нічого не збирається.
@@ -13,15 +14,9 @@ on:
       regions:
         description: "Області через кому (kyiv,lvivska…), all або none (без карт)"
         default: "all"
-      model_repo:
-        description: "Репозиторій GGUF на Hugging Face (порожньо — без моделі)"
-        default: "unsloth/gemma-4-E2B-it-GGUF"
-      model_file:
-        description: "Файл моделі в репозиторії"
-        default: "gemma-4-E2B-it-Q4_K_M.gguf"
-      model_id:
-        description: "id моделі з core/.../models.rs"
-        default: "gemma-4-e2b-it-q4"
+      models:
+        description: "Моделі ШІ з tools/packs/models.json: all, id через кому або none"
+        default: "all"
       zims:
         description: "Додати енциклопедії Kiwix (tools/packs/kiwix.json)"
         type: boolean
@@ -52,9 +47,7 @@ concurrency:
 # За розкладом: без карт (none), без моделі (порожньо), з публікацією.
 env:
   REGIONS: ${{ github.event_name == 'workflow_dispatch' && inputs.regions || github.event_name == 'schedule' && 'none' || 'kyiv' }}
-  MODEL_REPO: ${{ github.event_name == 'workflow_dispatch' && inputs.model_repo || github.event_name == 'pull_request' && 'unsloth/gemma-4-E2B-it-GGUF' || '' }}
-  MODEL_FILE: ${{ github.event_name == 'workflow_dispatch' && inputs.model_file || 'gemma-4-E2B-it-Q4_K_M.gguf' }}
-  MODEL_ID: ${{ github.event_name == 'workflow_dispatch' && inputs.model_id || 'gemma-4-e2b-it-q4' }}
+  MODELS: ${{ github.event_name == 'workflow_dispatch' && inputs.models || github.event_name == 'pull_request' && 'all' || 'none' }}
   PUBLISH: ${{ github.event_name == 'workflow_dispatch' && inputs.publish || github.event_name == 'schedule' }}
   ZIMS: ${{ github.event_name != 'workflow_dispatch' || inputs.zims }}
   FILTER_INFRA: ${{ github.event_name == 'workflow_dispatch' && inputs.filter_infra && '1' || '0' }}
@@ -118,11 +111,11 @@ jobs:
         run: |
           core/target/release/uautonomy-hub regions > work/regions.json
           tools/maps/build_maps.sh work/ukraine.osm.pbf core/target/release/uautonomy-hub work/regions.json "$REGIONS" out/packs
-      - name: Пакет моделі (посилання на Hugging Face)
-        if: env.MODEL_REPO != ''
+      - name: Пакети моделей (ваги на Hugging Face, NOTICE і ліцензія в пакеті)
+        if: env.MODELS != 'none' && env.MODELS != ''
         run: |
-          python3 tools/packs/hf_model_pack.py "$MODEL_REPO" "$MODEL_FILE" "$MODEL_ID" "Gemma 4 E2B (телефон)" > out/model.json
-          cat out/model.json
+          python3 tools/packs/hf_model_pack.py tools/packs/models.json out/packs "$MODELS"
+          cat out/packs/model-*/manifest.json
       - name: Енциклопедії Kiwix (посилання на download.kiwix.org)
         if: env.ZIMS == 'true'
         run: |
@@ -147,7 +140,6 @@ jobs:
           mkdir -p out/packs
           BASE="https://github.com/${GITHUB_REPOSITORY}/releases/download/${TAG}"
           merge=()
-          [ -f out/model.json ] && merge+=(--merge out/model.json)
           [ -f out/zims.json ] && merge+=(--merge out/zims.json)
           # Попередній каталог: області, які зараз не перезбирали, лишаються.
           if gh release download "$TAG" -p catalog.json -O out/previous.json 2>/dev/null; then

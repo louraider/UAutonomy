@@ -1,0 +1,30 @@
+{
+  "note": "Моделі ШІ, що публікуються в каталозі packs. model_id має збігатися з core/crates/uautonomy-core/src/models.rs. Ваги лежать на Hugging Face (застосунок качає їх напряму); у теці attach — супровідні файли, що їдуть разом з моделлю в пакеті (NOTICE і умови ліцензії, обов'язкові для похідних Gemma 3). sha256 (необов'язково) — файл, який ми перевіряли на eval; якщо на Hugging Face файл підмінили, збірка падає.",
+  "models": [
+    {
+      "model_id": "gemma-4-e2b-it-q4",
+      "title": "Gemma 4 E2B (телефон)",
+      "repo": "unsloth/gemma-4-E2B-it-GGUF",
+      "file": "gemma-4-E2B-it-Q4_K_M.gguf",
+      "license": "Apache-2.0"
+    },
+    {
+      "model_id": "gemma-4-e4b-it-q4",
+      "title": "Gemma 4 E4B (слабкий ПК)",
+      "repo": "unsloth/gemma-4-E4B-it-GGUF",
+      "file": "gemma-4-E4B-it-Q4_K_M.gguf",
+      "license": "Apache-2.0",
+      "sha256": "85a896a047553e842f25297ee5b031d64ff30147d9c4af17b1e4b394cd1fab87"
+    },
+    {
+      "model_id": "mamaylm-gemma-3-12b-it-q4",
+      "title": "MamayLM 12B (ПК)",
+      "repo": "INSAIT-Institute/MamayLM-Gemma-3-12B-IT-v1.0-GGUF",
+      "file": "MamayLM-Gemma-3-12B-IT-v1.0.Q4_K_M.gguf",
+      "license": "Gemma Terms of Use",
+      "description": "Українська модель MamayLM v1.0 (INSAIT) на основі Gemma 3 12B, та сама, що пройшла наші тести. Поширюється на умовах Gemma Terms of Use: див. NOTICE і GEMMA_TERMS_OF_USE.txt у пакеті. Користуючись моделлю, ви погоджуєтесь не застосовувати її способами, забороненими Gemma Prohibited Use Policy (GEMMA_PROHIBITED_USE_POLICY.txt).",
+      "attach": "tools/packs/licenses/gemma",
+      "sha256": "aedf0c457f1a83f115f40428d7ee0746e1f91ba067ced5c28831062442846d11"
+    }
+  ]
+}
