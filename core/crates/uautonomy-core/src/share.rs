@@ -713,10 +713,10 @@ return `<div class=hit><a href='${href}'>${e(h.title)}</a><br><small>${e(h.snipp
 <p class=warn>У небезпеці телефонуйте 112. Неперевірені фахівцем матеріали позначені.</p>\
 <input id=q placeholder='Пошук: кровотеча, вода, укриття…' autofocus><div id=r></div>{maps_h}\
 <h2>Термінові картки</h2>{cards}{zim_h}{apps_h}<h2>Пакети на цьому пристрої</h2><ul>{packs}</ul>\
-<p class=src>У застосунку «Автономія»: вкладка «Пакети» → поле «Адреса каталогу або іншого пристрою» → вставте цю адресу і натисніть стрілку.</p>{script}</body></html>",
+<p class=src>Щоб завантажити пакети в застосунок «Автономія», відкрийте в ньому вкладку «Пакети», вставте цю адресу в поле «Адреса каталогу або іншого пристрою» і натисніть стрілку.</p>{script}</body></html>",
         name = esc(&st.device_name),
         maps_h = if st.store.installed().iter().any(|p| p.kind == PackKind::Map) {
-            "<p><a href='/map'><b>🗺 Офлайн-карти</b></a></p>"
+            "<p><a href='/map'><b>Офлайн-карти</b></a></p>"
         } else {
             ""
         },

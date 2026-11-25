@@ -46,7 +46,7 @@ pub fn version() -> &'static str {
 
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
-    #[error("невірний JSON: {0}")]
+    #[error("некоректний JSON: {0}")]
     Json(#[from] serde_json::Error),
     #[error("помилка файлу: {0}")]
     Io(#[from] std::io::Error),
