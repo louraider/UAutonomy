@@ -324,8 +324,13 @@ fn catalog(args: &[String]) -> R {
         std::fs::create_dir_all(&stage)?;
         for p in &mut packs {
             for f in &mut p.files {
-                let flat = format!("{}--{}", p.id, f.path.replace('/', "--"));
                 let src = folders[&p.id].join(&f.path);
+                // Файл з власною адресою (модель на Hugging Face) не копіюємо:
+                // у теці пакета лежать лише малі супровідні файли (NOTICE).
+                if f.url.is_some() && !src.exists() {
+                    continue;
+                }
+                let flat = format!("{}--{}", p.id, f.path.replace('/', "--"));
                 let dst = stage.join(&flat);
                 if std::fs::hard_link(&src, &dst).is_err() {
                     std::fs::copy(&src, &dst)?;

@@ -98,7 +98,7 @@ pub fn recommend(hw: &HardwareInfo, models: &[ModelSpec]) -> Recommendation {
     let mut runnable: Vec<&ModelSpec> = models
         .iter()
         .filter(|m| ram >= m.min_ram_mb && fits_disk(m))
-        .filter(|m| !(hw.is_mobile && m.min_ram_mb > 12_000))
+        .filter(|m| !(hw.is_mobile && (m.desktop_only || m.min_ram_mb > 12_000)))
         .collect();
     runnable.sort_by_key(|m| m.min_ram_mb);
     // Найсильніша з рекомендованих для цього обсягу ОЗП.
@@ -186,17 +186,47 @@ mod tests {
 
     #[test]
     fn pcs_scale_up() {
+        // ПК з 16+ ГБ: основна модель MamayLM 12B, ШІ вмикається сам.
         let r = recommend(&hw(16, 500, false), &default_catalog());
-        assert_eq!(r.model_id.as_deref(), Some("gemma-4-e4b-it-q4"));
+        assert_eq!(r.model_id.as_deref(), Some("mamaylm-gemma-3-12b-it-q4"));
+        assert!(r.ai_by_default);
         assert_eq!(r.pack_tier, PackTier::Community);
+        // 26B більше не радимо навіть на 64 ГБ, але запустити її можна.
         let r = recommend(&hw(64, 500, false), &default_catalog());
-        assert_eq!(r.model_id.as_deref(), Some("gemma-4-26b-a4b-it-q4"));
+        assert_eq!(r.model_id.as_deref(), Some("mamaylm-gemma-3-12b-it-q4"));
         assert!(r
             .runnable_models
-            .contains(&"mamaylm-gemma-3-4b-q4".to_string()));
-        // Мало місця на диску: велика модель не пропонується.
-        let r = recommend(&hw(64, 8, false), &default_catalog());
+            .contains(&"gemma-4-26b-a4b-it-q4".to_string()));
+        // Слабкий ПК (8–15 ГБ): Gemma 4 E4B.
+        for gb in [8, 12, 15] {
+            let r = recommend(&hw(gb, 500, false), &default_catalog());
+            assert_eq!(r.model_id.as_deref(), Some("gemma-4-e4b-it-q4"), "{gb} ГБ");
+            assert!(r.ai_by_default);
+        }
+        // Мало місця на диску: MamayLM (7,3 ГБ) не влазить, лишається E4B.
+        let r = recommend(&hw(64, 6, false), &default_catalog());
         assert_eq!(r.model_id.as_deref(), Some("gemma-4-e4b-it-q4"));
+    }
+
+    #[test]
+    fn pc_falls_back_when_mamaylm_missing() {
+        // Каталог без MamayLM (ще не опубліковано): ПК бере E4B, а без неї E2B.
+        let mut c = default_catalog();
+        c.retain(|m| m.family != "mamaylm");
+        let r = recommend(&hw(32, 500, false), &c);
+        assert_eq!(r.model_id.as_deref(), Some("gemma-4-e4b-it-q4"));
+        c.retain(|m| m.id == "gemma-4-e2b-it-q4");
+        let r = recommend(&hw(32, 500, false), &c);
+        assert_eq!(r.model_id.as_deref(), Some("gemma-4-e2b-it-q4"));
+    }
+
+    #[test]
+    fn phones_stay_on_e2b() {
+        for gb in [8, 12, 16, 24] {
+            let r = recommend(&hw(gb, 256, true), &default_catalog());
+            assert_eq!(r.model_id.as_deref(), Some("gemma-4-e2b-it-q4"), "{gb} ГБ");
+            assert_eq!(r.runnable_models, vec!["gemma-4-e2b-it-q4".to_string()]);
+        }
     }
 
     #[test]
