@@ -25,10 +25,17 @@ class AiAnswer {
   int chunks = 0;
   int? totalMs;
 
-  /// Приблизна швидкість: шматки потоку ≈ токени.
+  /// Скільки токенів у відповіді (рахує токенізатор моделі після кінця).
+  /// Шматки потоку не дорівнюють токенам: llamadart віддає їх пачками,
+  /// тож рахунок за шматками занижував швидкість у кілька разів.
+  int? tokens;
+
   double? get tokensPerSecond {
     final t = totalMs, f = firstTokenMs;
-    if (t == null || f == null || t <= f || chunks < 2) return null;
+    if (t == null || f == null || t <= f) return null;
+    final n = tokens;
+    if (n != null && n > 1) return (n - 1) * 1000 / (t - f);
+    if (chunks < 2) return null;
     return (chunks - 1) * 1000 / (t - f);
   }
 }
@@ -59,12 +66,18 @@ class AiService {
       await engine
           .create(
             [
+              // Довгий запит, як справжній з фрагментами бібліотеки: так
+              // прогріваються й шляхи пакетної обробки (на першому реальному
+              // запитанні було ще 18 с очікування).
               LlamaChatMessage.fromText(
                 role: LlamaChatRole.user,
-                text: 'Привіт',
+                text: List.filled(
+                  120,
+                  'Запас води, укриття, генератор, перша допомога.',
+                ).join(' '),
               ),
             ],
-            params: const GenerationParams(maxTokens: 1),
+            params: const GenerationParams(maxTokens: 2),
             enableThinking: false,
           )
           .drain<void>();
@@ -194,8 +207,13 @@ class AiService {
               ..add(answer)
               ..close();
           },
-          onDone: () {
+          onDone: () async {
             answer.totalMs = answer.clock.elapsedMilliseconds;
+            try {
+              answer.tokens = await engine.getTokenCount(
+                answer.text.toString(),
+              );
+            } catch (_) {}
             answer.done = true;
             controller
               ..add(answer)

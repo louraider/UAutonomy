@@ -57,7 +57,8 @@ void main() {
           // ignore: avoid_print
           print(
             'AI_SPEED q="$q" first_token_ms=${a.firstTokenMs} '
-            'total_ms=${a.totalMs} chunks=${a.chunks} '
+            'total_ms=${a.totalMs} chunks=${a.chunks} tokens=${a.tokens} '
+            'chars=${a.text.length} '
             'tok_s=${a.tokensPerSecond?.toStringAsFixed(1)} error=${a.error}',
           );
           expect(a.error, isNull);
