@@ -3,13 +3,16 @@ import 'dart:io';
 import 'package:flutter/services.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:uautonomy/distribution.dart';
 import 'package:uautonomy/screens/chat_screen.dart';
 import 'package:uautonomy/screens/library_screen.dart';
 import 'package:uautonomy/screens/maps_screen.dart';
 import 'package:uautonomy/screens/packs_screen.dart';
+import 'package:uautonomy/screens/settings_screen.dart';
 import 'package:uautonomy/screens/share_screen.dart';
 import 'package:uautonomy/src/rust/api/library.dart';
 import 'package:uautonomy/src/rust/frb_generated.dart';
+import 'package:uautonomy/stats/stats.dart';
 import 'package:uautonomy/theme.dart';
 import 'package:uautonomy/update/update_check.dart';
 
@@ -24,6 +27,8 @@ Future<void> main() async {
   } catch (e) {
     error = '$e';
   }
+  await Stats.instance.init(dir.path);
+  track('app_open', {'dist': distChannel});
   runApp(UAutonomyApp(startupError: error, dataDir: dir.path));
 }
 
@@ -75,11 +80,20 @@ class _HomeScreenState extends State<HomeScreen> {
   int _tab = 0;
   UpdateInfo? _update;
 
-  void _goTo(int tab) => setState(() => _tab = tab);
+  static const _tabNames = ['library', 'assistant', 'maps', 'packs', 'share'];
+
+  void _goTo(int tab) {
+    if (tab != _tab) track('tab_open', {'tab': _tabNames[tab]});
+    setState(() => _tab = tab);
+  }
 
   @override
   void initState() {
     super.initState();
+    // Згоду на статистику питаємо одразу, раз, поверх головного екрана.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) askStatsConsent(context);
+    });
     final dir = widget.dataDir;
     if (dir != null && updateCheckSupported) {
       // Не заважаємо запуску: перевіряємо трохи згодом і лише раз.

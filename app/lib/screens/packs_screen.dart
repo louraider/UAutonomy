@@ -8,6 +8,7 @@ import 'package:uautonomy/legal/terms.dart';
 import 'package:uautonomy/screens/common.dart';
 import 'package:uautonomy/src/rust/api/device.dart';
 import 'package:uautonomy/src/rust/api/packs.dart';
+import 'package:uautonomy/stats/stats.dart';
 import 'package:uautonomy/widgets/brand.dart';
 
 /// Офіційний каталог: пакети лежать у GitHub Releases проєкту (тег `packs`).
@@ -125,6 +126,7 @@ class _PacksScreenState extends State<PacksScreen> {
         if (!mounted) return;
         setState(() => _progress = p);
       }
+      track('pack_install', {'pack': id, 'ok': 'yes'});
       if (mounted) {
         ScaffoldMessenger.of(context)
             .showSnackBar(SnackBar(content: Text(okText)));
@@ -148,6 +150,7 @@ class _PacksScreenState extends State<PacksScreen> {
       ];
       _changed();
     } catch (e) {
+      track('pack_install', {'pack': id, 'ok': 'no'});
       if (mounted) showError(context, e);
     } finally {
       if (mounted) {
