@@ -5,18 +5,159 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Автономія: офлайн-бібліотека виживання</title>
 <meta name="description" content="Безкоштовний застосунок для Android і Windows, що працює без інтернету і світла: термінові картки, офлайн-карти України, енциклопедії та локальний ШІ-помічник українською.">
+<link rel="canonical" href="https://uautonomy.app/">
+<meta name="robots" content="index, follow, max-image-preview:large">
 <meta property="og:title" content="Автономія: офлайн-бібліотека виживання">
 <meta property="og:description" content="Картки «що робити зараз», офлайн-карти, енциклопедії і ШІ-помічник українською. Працює без інтернету. Android і Windows.">
 <meta property="og:url" content="https://uautonomy.app/">
 <meta property="og:type" content="website">
 <meta property="og:locale" content="uk_UA">
 <meta property="og:image" content="https://uautonomy.app/og.png">
+<meta property="og:image:alt" content="Автономія: офлайн-бібліотека виживання для Android і Windows">
+<meta property="og:site_name" content="Автономія">
+<meta name="twitter:card" content="summary_large_image">
 <meta name="theme-color" content="#1F4FD1">
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
 <link rel="preload" href="/fonts/display-800.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="/fonts/text-400.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="alternate" type="text/plain" href="/llms.txt" title="Опис для ШІ-асистентів">
+<link rel="sitemap" type="application/xml" href="/sitemap.xml">
 <link rel="stylesheet" href="/style.css">
+<!-- jsonld:start -->
+<script type="application/ld+json">
+{
+ "@context": "https://schema.org",
+ "@graph": [
+  {
+   "@type": "Organization",
+   "@id": "https://uautonomy.app/#org",
+   "name": "Автономія",
+   "url": "https://uautonomy.app/",
+   "logo": "https://uautonomy.app/apple-touch-icon.png",
+   "sameAs": [
+    "https://github.com/louraider/UAutonomy"
+   ]
+  },
+  {
+   "@type": "WebSite",
+   "@id": "https://uautonomy.app/#site",
+   "url": "https://uautonomy.app/",
+   "name": "Автономія",
+   "inLanguage": "uk",
+   "publisher": {
+    "@id": "https://uautonomy.app/#org"
+   }
+  },
+  {
+   "@type": "SoftwareApplication",
+   "@id": "https://uautonomy.app/#app",
+   "name": "Автономія",
+   "alternateName": "UAutonomy",
+   "description": "Безкоштовна офлайн-бібліотека для українців: картки «що робити зараз», офлайн-карти України, енциклопедії та ШІ-помічник українською. Працює без інтернету і світла.",
+   "url": "https://uautonomy.app/",
+   "applicationCategory": "ReferenceApplication",
+   "operatingSystem": "Android, Windows 10, Windows 11",
+   "inLanguage": "uk",
+   "isAccessibleForFree": true,
+   "offers": {
+    "@type": "Offer",
+    "price": "0",
+    "priceCurrency": "UAH"
+   },
+   "downloadUrl": [
+    "https://uautonomy.app/android",
+    "https://uautonomy.app/windows"
+   ],
+   "license": "https://www.apache.org/licenses/LICENSE-2.0",
+   "codeRepository": "https://github.com/louraider/UAutonomy",
+   "featureList": [
+    "Картки «що робити зараз»: кровотеча, опіки, повітряна тривога, мінна небезпека, блекаут, вода, тепло",
+    "Офлайн-карти всіх областей України, Києва і Криму на основі OpenStreetMap",
+    "Українська Вікіпедія та медична енциклопедія без інтернету",
+    "ШІ-помічник українською, що працює на пристрої",
+    "Обмін застосунком і пакетами через локальний Wi-Fi і QR-код",
+    "Підписані пакети вмісту"
+   ],
+   "screenshot": "https://uautonomy.app/og.png",
+   "publisher": {
+    "@id": "https://uautonomy.app/#org"
+   }
+  },
+  {
+   "@type": "FAQPage",
+   "@id": "https://uautonomy.app/#faq",
+   "mainEntity": [
+    {
+     "@type": "Question",
+     "name": "Чи «Автономія» справді безкоштовна?",
+     "acceptedAnswer": {
+      "@type": "Answer",
+      "text": "Так. Застосунок, карти, енциклопедії й ШІ-помічник безкоштовні, без реклами і без облікових записів. Застосунок не збирає і не надсилає даних про вас."
+     }
+    },
+    {
+     "@type": "Question",
+     "name": "Чи працює застосунок без інтернету і світла?",
+     "acceptedAnswer": {
+      "@type": "Answer",
+      "text": "Так. Термінові картки доступні одразу після встановлення. Карти областей, енциклопедії й модель ШІ треба один раз завантажити, поки є інтернет, у вкладці «Пакети». Після цього все працює без мережі на заряді телефона чи ноутбука."
+     }
+    },
+    {
+     "@type": "Question",
+     "name": "На яких пристроях працює «Автономія»?",
+     "acceptedAnswer": {
+      "@type": "Answer",
+      "text": "На телефонах Android (64-бітних, приблизно з 2017 року; для старих 32-бітних є окремий APK без ШІ-помічника) і на комп'ютерах з Windows 10 і 11. Версії для iPhone ще немає. Поки що iPhone може відкрити карти в браузері через «Обмін» з телефона чи ПК в тій самій мережі Wi-Fi."
+     }
+    },
+    {
+     "@type": "Question",
+     "name": "Скільки місця займає застосунок?",
+     "acceptedAnswer": {
+      "@type": "Answer",
+      "text": "Сам застосунок невеликий. Найбільше місця займають пакети, які ви обираєте самі: карта своєї області, Вікіпедія, модель ШІ. Розмір кожного пакета видно перед завантаженням, тож можна взяти лише потрібне."
+     }
+    },
+    {
+     "@type": "Question",
+     "name": "Як працює ШІ-помічник без інтернету?",
+     "acceptedAnswer": {
+      "@type": "Answer",
+      "text": "Мовна модель працює просто на пристрої: на телефоні Gemma 4 E2B, на комп'ютері Gemma 4 E4B або українська MamayLM 12B, залежно від потужності. Помічник відповідає українською за матеріалами бібліотеки і показує джерело. ШІ може помилятися; на медичні питання він показує картки."
+     }
+    },
+    {
+     "@type": "Question",
+     "name": "Звідки медичні картки і чи їх перевірив лікар?",
+     "acceptedAnswer": {
+      "@type": "Answer",
+      "text": "Медичні картки складено за Наказом МОЗ №441 з дослівними цитатами. Жодну ще не перевірив лікар, а картки з мінної безпеки ще не перевірив сапер, і застосунок це прямо показує. «Автономія» не замінює лікаря, рятувальників чи офіційні сповіщення. У небезпеці телефонуйте 112."
+     }
+    },
+    {
+     "@type": "Question",
+     "name": "Чи безпечно встановлювати APK з сайту?",
+     "acceptedAnswer": {
+      "@type": "Answer",
+      "text": "APK і інсталятор для Windows збирає відкритий CI на GitHub з відкритого коду (Apache-2.0). Контрольні суми SHA-256 опубліковано на uautonomy.app/sha256. Кожен пакет із вмістом підписано ключем проєкту, і застосунок не прийме підмінений файл."
+     }
+    },
+    {
+     "@type": "Question",
+     "name": "Як передати застосунок і карти іншим без інтернету?",
+     "acceptedAnswer": {
+      "@type": "Answer",
+      "text": "Увімкніть «Обмін»: ваш телефон чи ПК роздає застосунок і пакети через локальний Wi-Fi, а інший пристрій заходить за QR-кодом. Так можна підготувати рідних чи сусідів, коли мобільний інтернет не працює."
+     }
+    }
+   ]
+  }
+ ]
+}
+</script>
+<!-- jsonld:end -->
 </head>
 <body>
 <a class="skip" href="#main">До змісту</a>
@@ -27,6 +168,7 @@
     <nav aria-label="Розділи">
       <a href="#inside">Що всередині</a>
       <a href="#install">Встановлення</a>
+      <a href="#faq">Питання</a>
       <a href="#honest">Чесно про стан</a>
       <a href="https://github.com/louraider/UAutonomy">GitHub</a>
     </nav>
@@ -150,6 +292,50 @@
     </div>
   </section>
 
+  <section id="faq">
+    <div class="wrap">
+      <div class="section-head">
+        <h2>Питання й відповіді</h2>
+      </div>
+      <div class="faq">
+<!-- faq:start -->
+        <details>
+          <summary><h3>Чи «Автономія» справді безкоштовна?</h3></summary>
+          <p>Так. Застосунок, карти, енциклопедії й ШІ-помічник безкоштовні, без реклами і без облікових записів. Застосунок не збирає і не надсилає даних про вас.</p>
+        </details>
+        <details>
+          <summary><h3>Чи працює застосунок без інтернету і світла?</h3></summary>
+          <p>Так. Термінові картки доступні одразу після встановлення. Карти областей, енциклопедії й модель ШІ треба один раз завантажити, поки є інтернет, у вкладці «Пакети». Після цього все працює без мережі на заряді телефона чи ноутбука.</p>
+        </details>
+        <details>
+          <summary><h3>На яких пристроях працює «Автономія»?</h3></summary>
+          <p>На телефонах Android (64-бітних, приблизно з 2017 року; для старих 32-бітних є окремий APK без ШІ-помічника) і на комп'ютерах з Windows 10 і 11. Версії для iPhone ще немає. Поки що iPhone може відкрити карти в браузері через «Обмін» з телефона чи ПК в тій самій мережі Wi-Fi.</p>
+        </details>
+        <details>
+          <summary><h3>Скільки місця займає застосунок?</h3></summary>
+          <p>Сам застосунок невеликий. Найбільше місця займають пакети, які ви обираєте самі: карта своєї області, Вікіпедія, модель ШІ. Розмір кожного пакета видно перед завантаженням, тож можна взяти лише потрібне.</p>
+        </details>
+        <details>
+          <summary><h3>Як працює ШІ-помічник без інтернету?</h3></summary>
+          <p>Мовна модель працює просто на пристрої: на телефоні Gemma 4 E2B, на комп'ютері Gemma 4 E4B або українська MamayLM 12B, залежно від потужності. Помічник відповідає українською за матеріалами бібліотеки і показує джерело. ШІ може помилятися; на медичні питання він показує картки.</p>
+        </details>
+        <details>
+          <summary><h3>Звідки медичні картки і чи їх перевірив лікар?</h3></summary>
+          <p>Медичні картки складено за Наказом МОЗ №441 з дослівними цитатами. Жодну ще не перевірив лікар, а картки з мінної безпеки ще не перевірив сапер, і застосунок це прямо показує. «Автономія» не замінює лікаря, рятувальників чи офіційні сповіщення. У небезпеці телефонуйте 112.</p>
+        </details>
+        <details>
+          <summary><h3>Чи безпечно встановлювати APK з сайту?</h3></summary>
+          <p>APK і інсталятор для Windows збирає відкритий CI на GitHub з відкритого коду (Apache-2.0). Контрольні суми SHA-256 опубліковано на uautonomy.app/sha256. Кожен пакет із вмістом підписано ключем проєкту, і застосунок не прийме підмінений файл.</p>
+        </details>
+        <details>
+          <summary><h3>Як передати застосунок і карти іншим без інтернету?</h3></summary>
+          <p>Увімкніть «Обмін»: ваш телефон чи ПК роздає застосунок і пакети через локальний Wi-Fi, а інший пристрій заходить за QR-кодом. Так можна підготувати рідних чи сусідів, коли мобільний інтернет не працює.</p>
+        </details>
+<!-- faq:end -->
+      </div>
+    </div>
+  </section>
+
   <section id="honest">
     <div class="wrap">
       <div class="section-head">
@@ -176,7 +362,7 @@
         <h2>Відкритий код</h2>
       </div>
       <p>Код відкритий під ліцензією Apache-2.0, щоб будь-хто міг перевірити, що застосунок робить, і зібрати його сам. Тексти, карти й моделі мають власні ліцензії (OpenStreetMap ODbL, Вікіпедія CC BY-SA, Gemma). Подробиці на <a href="https://github.com/louraider/UAutonomy">GitHub</a>.</p>
-      <p class="note">Для розробників: підписаний каталог пакетів доступний за сталою адресою <code>https://uautonomy.app/catalog.json</code>.</p>
+      <p class="note">Для розробників: підписаний каталог пакетів доступний за сталою адресою <code>https://uautonomy.app/catalog.json</code>. Опис проєкту для ШІ-асистентів і пошукових агентів: <a href="/llms.txt">llms.txt</a>, увесь текст сайту одним файлом: <a href="/llms-full.txt">llms-full.txt</a>.</p>
     </div>
   </section>
 </main>

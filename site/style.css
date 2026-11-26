@@ -117,6 +117,15 @@ ol.steps { margin: 0; padding-left: 22px; } ol.steps li { margin-bottom: 8px; }
 ol.steps li::marker { font-family: var(--display); font-weight: 800; color: var(--blue); }
 .note { color: var(--muted); font-size: 15px; margin: 20px 0 0; }
 
+.faq { display: grid; gap: 10px; max-width: 860px; }
+.faq details { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 4px 22px; }
+.faq summary { cursor: pointer; list-style: none; display: flex; align-items: center; justify-content: space-between; gap: 16px; padding-block: 14px; }
+.faq summary::-webkit-details-marker { display: none; }
+.faq summary::after { content: "+"; font: 800 24px/1 var(--display); color: var(--blue); flex: none; }
+.faq details[open] summary::after { content: "−"; }
+.faq summary h3 { font-size: 18px; font-weight: 700; margin: 0; }
+.faq details p { margin: 0 0 16px; color: var(--muted); }
+
 .honest { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; }
 .warn { background: var(--warn); color: var(--on-warn); border-radius: var(--radius); padding: 22px 24px; }
 .warn p { margin: 0 0 10px; } .warn p:last-child { margin: 0; }
