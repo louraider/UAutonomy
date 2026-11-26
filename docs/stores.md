@@ -33,8 +33,6 @@ gh workflow run store.yml -f msstore=true
 |---|---|---|
 | `ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD` | секрет | уже є (docs/signing.md) |
 | `PLAY_SERVICE_ACCOUNT_JSON` | секрет | Google Cloud: сервісний акаунт з доступом у Play Console, ключ JSON |
-| `MSSTORE_IDENTITY_NAME`, `MSSTORE_PUBLISHER`, `MSSTORE_PUBLISHER_DISPLAY_NAME` | змінна | Partner Center, сторінка «Product identity» після резервування назви |
-| `MSSTORE_PRODUCT_ID` | змінна | Partner Center, Store ID (12 символів, 9N…) |
 | `MSSTORE_TENANT_ID`, `MSSTORE_SELLER_ID`, `MSSTORE_CLIENT_ID`, `MSSTORE_CLIENT_SECRET` | секрет | лише для автоматичного надсилання: застосунок Entra ID, доданий у Partner Center (Account settings, User management, Microsoft Entra applications). Без них MSIX надсилається вручну. |
 
 ## Ключ підпису в Google Play
@@ -110,5 +108,5 @@ Play підписує застосунок своїм ключем (Play App Sig
 1. **Google Play Console**: обліковий запис розробника, $25 одноразово, перевірка особи (паспорт). Особисті облікові записи, створені після листопада 2023, перед першим публічним випуском мусять пройти закрите тестування: щонайменше 12 тестувальників протягом 14 днів поспіль. Організація (потрібен D-U-N-S) цього уникає.
 2. Створити застосунок `org.uautonomy.app`, вибрати власний ключ підпису (див. вище), вручну завантажити перший AAB.
 3. Сервісний акаунт Google Cloud з роллю у Play Console і його JSON у секрет `PLAY_SERVICE_ACCOUNT_JSON`.
-4. **Microsoft Partner Center**: обліковий запис індивідуального розробника безкоштовно через https://storedeveloper.microsoft.com (паспорт і селфі). Зарезервувати назву «Автономія», скопіювати ідентичність пакета у змінні `MSSTORE_*`, вручну подати перший MSIX.
+4. **Microsoft Partner Center**: обліковий запис індивідуального розробника безкоштовно через https://storedeveloper.microsoft.com (паспорт і селфі). Зроблено 26.11.2026: Store ID 9ND0BDP276VT, зарезервовано «Автономія» і «UAutonomy», ідентичність пакета в `app/pubspec.yaml` (msix_config). Перший MSIX подається вручну.
 5. **Пошта support@uautonomy.app**: переадресація на свою скриньку (наприклад, ImprovMX чи Cloudflare Email Routing, безкоштовно; потрібні записи MX у DNS домену). Адреса стоїть у застосунку, на сайті й у магазинах.
