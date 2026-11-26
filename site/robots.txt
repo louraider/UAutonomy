@@ -1,0 +1,5 @@
+# Сайт відкритий для всіх пошукових систем і ШІ-асистентів.
+User-agent: *
+Allow: /
+
+Sitemap: https://uautonomy.app/sitemap.xml
