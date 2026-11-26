@@ -11,6 +11,7 @@ import 'package:uautonomy/screens/share_screen.dart';
 import 'package:uautonomy/src/rust/api/library.dart';
 import 'package:uautonomy/src/rust/frb_generated.dart';
 import 'package:uautonomy/theme.dart';
+import 'package:uautonomy/update/update_check.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -23,7 +24,7 @@ Future<void> main() async {
   } catch (e) {
     error = '$e';
   }
-  runApp(UAutonomyApp(startupError: error));
+  runApp(UAutonomyApp(startupError: error, dataDir: dir.path));
 }
 
 /// На iPhone тека застосунку потрапляє в резервну копію iCloud, а там
@@ -38,9 +39,10 @@ Future<void> _excludeFromBackup(String path) async {
 }
 
 class UAutonomyApp extends StatelessWidget {
-  const UAutonomyApp({super.key, this.startupError});
+  const UAutonomyApp({super.key, this.startupError, this.dataDir});
 
   final String? startupError;
+  final String? dataDir;
 
   @override
   Widget build(BuildContext context) {
@@ -49,7 +51,7 @@ class UAutonomyApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       theme: buildTheme(Brightness.light),
       darkTheme: buildTheme(Brightness.dark),
-      home: HomeScreen(startupError: startupError),
+      home: HomeScreen(startupError: startupError, dataDir: dataDir),
     );
   }
 }
@@ -58,9 +60,12 @@ class UAutonomyApp extends StatelessWidget {
 final libraryVersion = ValueNotifier<int>(0);
 
 class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key, this.startupError});
+  const HomeScreen({super.key, this.startupError, this.dataDir});
 
   final String? startupError;
+
+  /// Тека даних; потрібна, щоб запам'ятати відкладене оновлення.
+  final String? dataDir;
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -68,8 +73,29 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   int _tab = 0;
+  UpdateInfo? _update;
 
   void _goTo(int tab) => setState(() => _tab = tab);
+
+  @override
+  void initState() {
+    super.initState();
+    final dir = widget.dataDir;
+    if (dir != null && updateCheckSupported) {
+      // Не заважаємо запуску: перевіряємо трохи згодом і лише раз.
+      Future.delayed(const Duration(seconds: 5), () async {
+        final u = await checkForUpdate(dir);
+        if (mounted && u != null) setState(() => _update = u);
+      });
+    }
+  }
+
+  void _dismissUpdate() {
+    final u = _update;
+    final dir = widget.dataDir;
+    if (u != null && dir != null) dismissUpdate(dir, u.build);
+    setState(() => _update = null);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -90,6 +116,32 @@ class _HomeScreenState extends State<HomeScreen> {
                   'Не вдалося відкрити бібліотеку: ${widget.startupError}',
                 ),
                 actions: const [SizedBox.shrink()],
+              ),
+            if (_update case final u?)
+              MaterialBanner(
+                leading: const Icon(Icons.system_update),
+                content: Text(
+                  u.date.isEmpty
+                      ? 'Вийшла нова версія «Автономії».'
+                      : 'Вийшла нова версія «Автономії» від ${u.date}.',
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: _dismissUpdate,
+                    child: const Text('Не зараз'),
+                  ),
+                  FilledButton(
+                    onPressed: () async {
+                      final ok = await openDownload(u.url);
+                      if (!ok && context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text('Завантажте з ${u.url}')),
+                        );
+                      }
+                    },
+                    child: const Text('Завантажити'),
+                  ),
+                ],
               ),
             Expanded(
               child: IndexedStack(index: _tab, children: pages),

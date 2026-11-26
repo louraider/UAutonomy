@@ -112,7 +112,12 @@ jobs:
       # Основний — arm64-v8a, він же лежить у релізі під сталою назвою
       # avtonomiia.apk. «Обмін» роздає той APK, що встановлено на телефоні.
       # Символи Dart окремо (--split-debug-info), щоб розшифрувати падіння.
-      - run: flutter build apk --release --split-per-abi --split-debug-info=build/symbols
+      # Номер запуску CI = номер збірки: з нього Android бере versionCode
+      # (плюс 1000 × ABI), а застосунок порівнює його з version.json релізу,
+      # щоб сказати людині про нову версію (lib/update/update_check.dart).
+      # Збірки для Google Play і Microsoft Store мають задавати
+      # UAUTONOMY_DIST=play / msstore: там оновлює магазин, і перевірки немає.
+      - run: flutter build apk --release --split-per-abi --split-debug-info=build/symbols --build-number=${{ github.run_number }} --dart-define=UAUTONOMY_BUILD=${{ github.run_number }} --dart-define=UAUTONOMY_DIST=site
         env:
           UAUTONOMY_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
       - name: Сертифікат підпису і розмір APK
@@ -221,7 +226,7 @@ jobs:
           channel: stable
           cache: true
       - run: flutter pub get
-      - run: flutter build windows --release
+      - run: flutter build windows --release --build-number=${{ github.run_number }} --dart-define=UAUTONOMY_BUILD=${{ github.run_number }} --dart-define=UAUTONOMY_DIST=site
       - name: Модулі llama.cpp у збірці (чи є Vulkan)
         shell: pwsh
         run: Get-ChildItem build/windows/x64/runner/Release -Recurse -Include *.dll | Select-Object Name, Length | Format-Table -AutoSize
@@ -448,6 +453,9 @@ jobs:
           cp android/avtonomiia-arm64-v8a.apk avtonomiia.apk
           mv android/avtonomiia-armeabi-v7a.apk android/avtonomiia-x86_64.apk .
           zip -r -q -9 avtonomiia-windows-x64.zip Avtonomiia
+          # Що застосунок вважає останньою версією (див. lib/update/update_check.dart).
+          printf '{"build": %s, "commit": "%s", "date": "%s"}\n' "$GITHUB_RUN_NUMBER" "${GITHUB_SHA::7}" "$(date -u +%Y-%m-%d)" > version.json
+          cat version.json
           sha256sum avtonomiia.apk avtonomiia-armeabi-v7a.apk avtonomiia-x86_64.apk avtonomiia-windows-setup.exe avtonomiia-windows-x64.zip > SHA256SUMS.txt
           cat SHA256SUMS.txt
       - name: Оновити реліз app
@@ -467,7 +475,7 @@ jobs:
           - Контрольні суми: SHA256SUMS.txt
 
           Медичні картки складено за Наказом МОЗ №441, але лікар їх ще не перевірив."
-          FILES="dist/avtonomiia.apk dist/avtonomiia-armeabi-v7a.apk dist/avtonomiia-x86_64.apk dist/avtonomiia-windows-setup.exe dist/avtonomiia-windows-x64.zip dist/SHA256SUMS.txt"
+          FILES="dist/avtonomiia.apk dist/avtonomiia-armeabi-v7a.apk dist/avtonomiia-x86_64.apk dist/avtonomiia-windows-setup.exe dist/avtonomiia-windows-x64.zip dist/SHA256SUMS.txt dist/version.json"
           if gh release view app >/dev/null 2>&1; then
             gh release upload app $FILES --clobber
             gh release edit app --notes "$NOTES" --prerelease
