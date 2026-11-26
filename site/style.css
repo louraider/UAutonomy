@@ -137,6 +137,8 @@ footer a { color: var(--muted); }
 .doc h2 { font-size: 22px; font-weight: 700; margin: 36px 0 8px; padding-top: 20px; border-top: 1px solid var(--line); }
 .doc ul { padding-left: 22px; } .doc li { margin: 6px 0; }
 .doc a { overflow-wrap: anywhere; }
+.doc .btn { font: inherit; font-weight: 600; padding: 10px 16px; border-radius: 10px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); cursor: pointer; min-height: 44px; }
+.doc .btn:focus-visible { outline: 3px solid var(--marker); outline-offset: 2px; }
 
 @media (max-width: 900px) {
   .hero .inner { grid-template-columns: minmax(0, 1fr); padding-block: 20px 48px; }
