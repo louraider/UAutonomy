@@ -82,6 +82,7 @@ TEMPLATE = """<!doctype html>
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
 <link rel="stylesheet" href="/style.css">
+<script src="/ga.js"></script>
 </head>
 <body>
 <a class="skip" href="#main">До змісту</a>
