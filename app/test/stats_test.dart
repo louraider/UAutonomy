@@ -187,6 +187,33 @@ void main() {
     s.dispose();
   });
 
+  testWidgets('«Назад» у запиті згоди не означає «Ні»', (tester) async {
+    final server = _FakeServer();
+    final s = _stats(server);
+    await tester.runAsync(() => s.init(dir.path));
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Builder(
+          builder: (context) => TextButton(
+            onPressed: () => askStatsConsent(context, stats: s),
+            child: const Text('go'),
+          ),
+        ),
+      ),
+    );
+    await tester.tap(find.text('go'));
+    await tester.pumpAndSettle();
+    await tester.runAsync(() async {
+      await tester.binding.handlePopRoute();
+      await Future<void>.delayed(const Duration(milliseconds: 100));
+    });
+    await tester.pumpAndSettle();
+    expect(find.text('Допоможете зробити «Автономію» кращою?'), findsNothing);
+    expect(s.consent, StatsConsent.unknown);
+    expect(s.needsConsent, isTrue);
+    s.dispose();
+  });
+
   testWidgets('у налаштуваннях статистику можна вимкнути', (tester) async {
     final server = _FakeServer();
     final s = _stats(server);
