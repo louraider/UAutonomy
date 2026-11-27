@@ -8,6 +8,7 @@ import 'package:uautonomy/distribution.dart';
 import 'package:uautonomy/screens/common.dart';
 import 'package:uautonomy/share/windows_firewall.dart';
 import 'package:uautonomy/src/rust/api/share.dart';
+import 'package:uautonomy/stats/stats.dart';
 import 'package:uautonomy/widgets/brand.dart';
 
 const _channel = MethodChannel('org.uautonomy/app');
@@ -143,6 +144,7 @@ class _ShareScreenState extends State<ShareScreen> {
       if (_info.running) {
         await stopSharing();
       } else {
+        track('share_start');
         await startSharing(
           deviceName: Platform.localHostname,
           appFiles: await _appFiles(),

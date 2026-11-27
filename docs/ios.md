@@ -16,7 +16,7 @@ iOS-версія розповсюджується лише через App Store 
 | Імпорт пакета чи моделі | З «Файлів» (флешка через USB-C, iCloud Drive тощо). Тимчасову копію, яку робить iOS, прибираємо одразу після імпорту. Імпорт цілої теки на iOS вимкнено |
 | Карти | Векторні PMTiles, як на Android |
 | Обмін | Той самий сервер у локальній мережі й QR-код. iOS зупиняє сервер, коли застосунок іде у фон, тож поки обмін увімкнено, екран не гасне. APK для Android iPhone не роздає |
-| Приватність | `PrivacyInfo.xcprivacy`: нічого не збираємо, причини для API вільного місця (E174.1) і часу файлів (C617.1) |
+| Приватність | `PrivacyInfo.xcprivacy`: анонімна статистика за згодою (Product Interaction, не прив'язана до людини, без стеження), причини для API вільного місця (E174.1) і часу файлів (C617.1) |
 | Шифрування | `ITSAppUsesNonExemptEncryption = false`: лише HTTPS і перевірка підписів, це звільнено від експортної документації |
 
 CI (`.github/workflows/ci.yml`, job `ios`, macOS): `flutter build ios --release
@@ -42,7 +42,7 @@ llama.cpp на крихітній моделі stories260K.
    Секрети репозиторію: `APPSTORE_API_KEY_P8_BASE64`, `APPSTORE_API_KEY_ID`,
    `APPSTORE_API_ISSUER_ID`, а також `APPLE_TEAM_ID`.
 5. Пройти анкету експортного контролю (відповідь: лише звільнене шифрування)
-   і заповнити «App Privacy» в App Store Connect (дані не збираються).
+   і заповнити «App Privacy» в App Store Connect (Usage Data → Product Interaction, Analytics, Not linked to user, No tracking; Location → Coarse Location, бо Aptabase визначає країну за IP). Збірку з ключем статистики треба запускати з `--dart-define=UAUTONOMY_STATS_KEY=…`, як на Android і Windows.
 
 Після цього додається крок CI `xcodebuild -exportArchive` з підписом
 і `xcrun altool --upload-app` (або `fastlane pilot`) у TestFlight.

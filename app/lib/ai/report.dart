@@ -1,6 +1,7 @@
 import 'package:flutter/services.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:uautonomy/distribution.dart';
+import 'package:uautonomy/stats/stats.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 /// Скарга на відповідь помічника: людина бачить, що саме буде надіслано,
@@ -11,6 +12,7 @@ Future<void> showReportSheet(
   required String question,
   required String answer,
 }) {
+  track('ai_report_open');
   final report =
       'Запитання:\n$question\n\nВідповідь помічника:\n$answer\n\n'
       'Що не так:\n';

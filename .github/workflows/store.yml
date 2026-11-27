@@ -99,6 +99,7 @@ jobs:
               --build-number=$CODE \
               --dart-define=UAUTONOMY_BUILD=${{ github.run_number }} \
               --dart-define=UAUTONOMY_DIST=play \
+              --dart-define=UAUTONOMY_STATS_KEY=${{ vars.UAUTONOMY_STATS_KEY || 'A-EU-3389314094' }} --dart-define=UAUTONOMY_STATS_HOST=${{ vars.UAUTONOMY_STATS_HOST }} \
               --split-debug-info=build/symbols && exit 0
             echo "::warning::спроба $i не вдалася, повтор"; sleep 60
           done
@@ -182,7 +183,7 @@ jobs:
           channel: stable
           cache: true
       - run: flutter pub get
-      - run: flutter build windows --release --build-number=${{ github.run_number }} --dart-define=UAUTONOMY_BUILD=${{ github.run_number }} --dart-define=UAUTONOMY_DIST=msstore
+      - run: flutter build windows --release --build-number=${{ github.run_number }} --dart-define=UAUTONOMY_BUILD=${{ github.run_number }} --dart-define=UAUTONOMY_DIST=msstore --dart-define=UAUTONOMY_STATS_KEY=${{ vars.UAUTONOMY_STATS_KEY || 'A-EU-3389314094' }} --dart-define=UAUTONOMY_STATS_HOST=${{ vars.UAUTONOMY_STATS_HOST }}
       # Версія MSIX: чотири числа, останнє Store вимагає нулем.
       - name: Версія пакета
         shell: pwsh
