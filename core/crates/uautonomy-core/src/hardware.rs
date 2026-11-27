@@ -47,7 +47,7 @@ pub fn detect(data_dir: &Path) -> HardwareInfo {
     HardwareInfo {
         total_ram_mb: sys.total_memory() / 1_048_576,
         available_ram_mb: sys.available_memory() / 1_048_576,
-        cpu_cores: sys.cpus().len().max(1) as u32,
+        cpu_cores: cpu_cores(sys.cpus().len()),
         cpu_brand,
         os: std::env::consts::OS.to_string(),
         arch: std::env::consts::ARCH.to_string(),
@@ -132,6 +132,14 @@ pub fn detect(data_dir: &Path) -> HardwareInfo {
         free_disk_mb: free_disk(data_dir) / 1_048_576,
         is_mobile: true,
     }
+}
+
+/// Кількість ядер. На Android застосунку заборонено читати `/proc/stat`,
+/// і sysinfo бачить нуль процесорів (на 8-ядерному телефоні виходило
+/// «1 ядер»), тож беремо більше з двох: sysinfo і `available_parallelism`.
+fn cpu_cores(sysinfo_cpus: usize) -> u32 {
+    let parallelism = std::thread::available_parallelism().map_or(0, |n| n.get());
+    sysinfo_cpus.max(parallelism).max(1) as u32
 }
 
 /// Чи лежить `path` на диску з точкою монтування `mount`. На Windows
