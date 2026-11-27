@@ -116,7 +116,9 @@ class _ChatScreenState extends State<ChatScreen> {
       ].join(' · ');
       return true;
     } catch (e) {
-      if (mounted) showError(context, 'Не вдалося запустити модель. ${errorText(e)}');
+      if (mounted) {
+        showError(context, 'Не вдалося запустити модель. ${errorText(e)}');
+      }
       return false;
     } finally {
       if (mounted) setState(() => _loading = false);
