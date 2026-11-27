@@ -13,6 +13,7 @@ import 'package:uautonomy/screens/library_screen.dart';
 import 'package:uautonomy/src/rust/api/ai.dart';
 import 'package:uautonomy/src/rust/api/device.dart';
 import 'package:uautonomy/src/rust/api/library.dart';
+import 'package:uautonomy/stats/ai_stats.dart';
 import 'package:uautonomy/widgets/brand.dart';
 import 'package:uautonomy/widgets/markdown_view.dart';
 
@@ -146,6 +147,8 @@ class _ChatScreenState extends State<ChatScreen> {
     }
   }
 
+  final _tracked = Set<AiAnswer>.identity();
+
   Future<void> _send() async {
     final q = _input.text.trim();
     if (q.isEmpty || _busy) return;
@@ -167,6 +170,7 @@ class _ChatScreenState extends State<ChatScreen> {
         if (!_answers.contains(a)) _answers.insert(0, a);
         if (a.done) _busy = false;
       });
+      if (a.done && _tracked.add(a)) trackAnswer(a);
     });
   }
 

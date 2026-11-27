@@ -1,7 +1,11 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:uautonomy/screens/common.dart';
+import 'package:uautonomy/screens/settings_screen.dart';
 import 'package:uautonomy/src/rust/api/library.dart';
+import 'package:uautonomy/stats/stats.dart';
 import 'package:uautonomy/theme.dart';
 import 'package:uautonomy/widgets/brand.dart';
 import 'package:uautonomy/widgets/markdown_view.dart';
@@ -39,6 +43,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
   void dispose() {
     widget.version.removeListener(_reload);
     _query.dispose();
+    _searchStat?.cancel();
     super.dispose();
   }
 
@@ -51,8 +56,18 @@ class _LibraryScreenState extends State<LibraryScreen> {
     });
   }
 
+  Timer? _searchStat;
+
   void _search(String q) {
     setState(() => _hits = q.trim().isEmpty ? const [] : search(query: q));
+    // Одна подія на пошук, коли людина перестала друкувати. Лише чи
+    // знайшлося щось, без самого тексту.
+    _searchStat?.cancel();
+    if (q.trim().length >= 3) {
+      _searchStat = Timer(const Duration(seconds: 3), () {
+        if (mounted) track('search', {'found': _hits.isEmpty ? 'no' : 'yes'});
+      });
+    }
   }
 
   void _open(HitView h) {
@@ -73,8 +88,22 @@ class _LibraryScreenState extends State<LibraryScreen> {
     return ContentWidth(
       child: CustomScrollView(
         slivers: [
-          const SliverToBoxAdapter(
-            child: TabHeader(title: 'Довідка', showMark: true),
+          SliverToBoxAdapter(
+            child: TabHeader(
+              title: 'Довідка',
+              showMark: true,
+              trailing: [
+                IconButton(
+                  icon: const Icon(Icons.settings_outlined),
+                  tooltip: 'Налаштування і відгук',
+                  onPressed: () => Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (_) => const SettingsScreen(),
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
           SliverPadding(
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
@@ -214,11 +243,14 @@ class _CategoryTile extends StatelessWidget {
       ),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
-        onTap: () => Navigator.of(context).push(
-          MaterialPageRoute<void>(
-            builder: (_) => CategoryScreen(category: category),
-          ),
-        ),
+        onTap: () {
+          track('category_open', {'category': category.slug});
+          Navigator.of(context).push(
+            MaterialPageRoute<void>(
+              builder: (_) => CategoryScreen(category: category),
+            ),
+          );
+        },
         child: Padding(
           padding: const EdgeInsets.all(14),
           child: Column(
@@ -300,6 +332,7 @@ class CategoryScreen extends StatelessWidget {
 }
 
 void openCard(BuildContext context, CardView c) {
+  track('card_open', {'card': c.id, 'category': c.category});
   Navigator.of(context)
       .push(MaterialPageRoute<void>(builder: (_) => CardScreen(card: c)));
 }

@@ -6,6 +6,7 @@ import 'package:uautonomy/screens/common.dart';
 import 'package:uautonomy/src/rust/api/device.dart' as device;
 import 'package:uautonomy/src/rust/api/packs.dart' as packs;
 import 'package:uautonomy/src/rust/api/packs.dart' show PackView, ProgressView;
+import 'package:uautonomy/stats/stats.dart';
 
 /// Офіційний каталог: пакети лежать у GitHub Releases проєкту (тег `packs`).
 const officialCatalogUrl =
@@ -273,6 +274,7 @@ class DownloadManager extends ChangeNotifier {
             for (final p in catalog) p.id == id ? _withInstalled(p) : p,
           ];
           onInstalled?.call();
+          track('pack_install', {'pack': id, 'ok': 'yes'});
         } catch (e) {
           if (_pauseRequested) {
             _pauseRequested = false;
@@ -284,6 +286,7 @@ class DownloadManager extends ChangeNotifier {
           } else {
             failedId = id;
             error = errorText(e);
+            track('pack_install', {'pack': id, 'ok': 'no'});
             paused = true;
           }
         }
