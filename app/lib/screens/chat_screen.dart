@@ -5,6 +5,8 @@ import 'package:flutter/foundation.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:uautonomy/ai/ai_service.dart';
 import 'package:uautonomy/ai/report.dart';
+import 'package:uautonomy/downloads/download_manager.dart';
+import 'package:uautonomy/downloads/download_widgets.dart';
 import 'package:uautonomy/legal/terms.dart';
 import 'package:uautonomy/screens/common.dart';
 import 'package:uautonomy/screens/library_screen.dart';
@@ -114,7 +116,9 @@ class _ChatScreenState extends State<ChatScreen> {
       ].join(' · ');
       return true;
     } catch (e) {
-      if (mounted) showError(context, 'Не вдалося запустити модель. ${errorText(e)}');
+      if (mounted) {
+        showError(context, 'Не вдалося запустити модель. ${errorText(e)}');
+      }
       return false;
     } finally {
       if (mounted) setState(() => _loading = false);
@@ -211,10 +215,16 @@ class _ChatScreenState extends State<ChatScreen> {
         const SizedBox(height: 12),
         if (rec != null) Text(rec.reason, textAlign: TextAlign.center),
         const SizedBox(height: 24),
-        FilledButton.icon(
+        // Модель завантажується тут же, одним натиском, без пошуку в каталозі.
+        PackDownloadPanel(
+          manager: DownloadManager.instance,
+          find: (m) =>
+              m.modelPack(rec?.modelId) ?? m.modelPack(m.recommendedModelId),
+          label: 'модель',
+        ),
+        TextButton(
           onPressed: widget.onOpenPacks,
-          icon: const Icon(Icons.download),
-          label: const Text('Завантажити модель у «Пакетах»'),
+          child: const Text('Інші моделі в «Пакетах»'),
         ),
         const SizedBox(height: 8),
         OutlinedButton.icon(

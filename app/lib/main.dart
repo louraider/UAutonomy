@@ -3,12 +3,15 @@ import 'dart:io';
 import 'package:flutter/services.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:uautonomy/downloads/download_manager.dart';
 import 'package:uautonomy/screens/chat_screen.dart';
 import 'package:uautonomy/screens/library_screen.dart';
 import 'package:uautonomy/screens/maps_screen.dart';
 import 'package:uautonomy/screens/packs_screen.dart';
 import 'package:uautonomy/screens/share_screen.dart';
+import 'package:uautonomy/screens/welcome_screen.dart';
 import 'package:uautonomy/src/rust/api/library.dart';
+import 'package:uautonomy/src/rust/api/packs.dart' show installedPacks;
 import 'package:uautonomy/src/rust/frb_generated.dart';
 import 'package:uautonomy/theme.dart';
 import 'package:uautonomy/update/update_check.dart';
@@ -74,12 +77,33 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   int _tab = 0;
   UpdateInfo? _update;
+  late final DownloadPrefs? _prefs = widget.dataDir == null
+      ? null
+      : DownloadPrefs(widget.dataDir!);
+  final _downloads = DownloadManager.instance;
 
   void _goTo(int tab) => setState(() => _tab = tab);
 
   @override
   void initState() {
     super.initState();
+    _downloads.onInstalled = () => libraryVersion.value++;
+    // Перший запуск: одразу пропонуємо завантажити карту, енциклопедію й
+    // модель. Тести застосунку (без dataDir) цей екран не бачать.
+    final prefs = _prefs;
+    if (prefs != null && !prefs.welcomeDone && widget.startupError == null) {
+      bool fresh;
+      try {
+        fresh = installedPacks().isEmpty;
+      } catch (_) {
+        fresh = false;
+      }
+      if (fresh) {
+        WidgetsBinding.instance.addPostFrameCallback((_) => _showWelcome());
+      } else {
+        prefs.markWelcomeDone();
+      }
+    }
     final dir = widget.dataDir;
     if (dir != null && updateCheckSupported) {
       // Не заважаємо запуску: перевіряємо трохи згодом і лише раз.
@@ -88,6 +112,21 @@ class _HomeScreenState extends State<HomeScreen> {
         if (mounted && u != null) setState(() => _update = u);
       });
     }
+  }
+
+  Future<void> _showWelcome() async {
+    final started = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(
+        fullscreenDialog: true,
+        builder: (c) => WelcomeScreen(
+          manager: _downloads,
+          prefs: _prefs,
+          onDone: (s) => Navigator.of(c).pop(s),
+        ),
+      ),
+    );
+    _prefs?.markWelcomeDone();
+    if (started == true && mounted) _goTo(3);
   }
 
   void _dismissUpdate() {
@@ -102,8 +141,16 @@ class _HomeScreenState extends State<HomeScreen> {
     final pages = [
       LibraryScreen(version: libraryVersion),
       ChatScreen(version: libraryVersion, onOpenPacks: () => _goTo(3)),
-      MapsScreen(version: libraryVersion, onOpenPacks: () => _goTo(3)),
-      PacksScreen(onChanged: () => libraryVersion.value++),
+      MapsScreen(
+        version: libraryVersion,
+        onOpenPacks: () => _goTo(3),
+        prefs: _prefs,
+      ),
+      PacksScreen(
+        onChanged: () => libraryVersion.value++,
+        manager: _downloads,
+        prefs: _prefs,
+      ),
       const ShareScreen(),
     ];
     // «Назад» з іншої вкладки веде на «Довідку», а не закриває застосунок:
@@ -145,7 +192,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   FilledButton(
                     onPressed: () async {
                       final ok = await openDownload(u.url);
-                      if (!ok && context.mounted) {
+                      if (!ok && mounted) {
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(content: Text('Завантажте з ${u.url}')),
                         );

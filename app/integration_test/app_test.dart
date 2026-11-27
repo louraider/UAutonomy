@@ -14,9 +14,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:uautonomy/ai/ai_service.dart';
+import 'package:uautonomy/downloads/download_manager.dart';
 import 'package:uautonomy/main.dart';
 import 'package:uautonomy/screens/library_screen.dart';
-import 'package:uautonomy/screens/packs_screen.dart';
 import 'package:uautonomy/screens/share_screen.dart';
 import 'package:uautonomy/src/rust/api/device.dart';
 import 'package:uautonomy/src/rust/api/library.dart';
@@ -117,7 +117,8 @@ void main() {
     }
 
     await openTab(tester, 'Пакети');
-    expect(find.text(officialCatalogUrl), findsOneWidget);
+    // Каталог відкривається сам, адресу вводити не треба.
+    expect(find.text('Усе потрібне для роботи без інтернету'), findsOneWidget);
   }, timeout: _perTest);
 
   testWidgets('Обмін: сервер вмикається і вимикається', (tester) async {
@@ -175,7 +176,18 @@ void main() {
         reason: 'у каталозі є модель ШІ',
       );
 
-      await downloadPack(id: 'map-kyiv').drain<void>();
+      // Так само, як після натискання «Завантажити карту»: через спільну
+      // чергу застосунку, з тим самим каталогом.
+      final m = DownloadManager.instance;
+      await m.loadCatalog(officialCatalogUrl);
+      expect(m.catalogStatus, CatalogStatus.ready, reason: '${m.catalogError}');
+      expect(m.mapFor('kyiv'), isNotNull);
+      m.enqueue(['map-kyiv']);
+      for (var i = 0; i < 600 && m.busy; i++) {
+        await Future<void>.delayed(const Duration(milliseconds: 200));
+      }
+      expect(m.error, isNull);
+      expect(m.stateOf('map-kyiv'), PackState.installed);
       final kyiv = mapRegions().firstWhere((r) => r.id == 'kyiv');
       expect(kyiv.mapPath, isNotNull);
       final h = await mapHeader(path: kyiv.mapPath!);
