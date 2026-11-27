@@ -106,8 +106,9 @@ class _PacksScreenState extends State<PacksScreen> {
       });
       _refreshRecommendation();
     } catch (e) {
-      if (mounted)
+      if (mounted) {
         showError(context, 'Не вдалося відкрити каталог. ${errorText(e)}');
+      }
     } finally {
       if (mounted) setState(() => _fetching = false);
     }
