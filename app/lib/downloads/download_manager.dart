@@ -353,9 +353,13 @@ class DownloadManager extends ChangeNotifier {
       if (p.kind != 'map' || r == null) continue;
       out.add((r, regionTitle(p)));
     }
-    out.sort((a, b) => a.$2.compareTo(b.$2));
+    out.sort((a, b) => compareUk(a.$2, b.$2));
     return out;
   }
+
+  /// Карти за назвою області в порядку української абетки.
+  static int compareRegions(PackView a, PackView b) =>
+      compareUk(regionTitle(a), regionTitle(b));
 
   static String regionTitle(PackView p) {
     const prefix = 'Карта: ';

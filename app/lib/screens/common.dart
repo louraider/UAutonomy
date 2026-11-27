@@ -60,6 +60,26 @@ void showError(BuildContext context, Object e) {
   );
 }
 
+const _ukAlphabet = 'абвгґдеєжзиіїйклмнопрстуфхцчшщьюя';
+
+/// Порівняння за українською абеткою. Звичайне `compareTo` порівнює коди
+/// символів, і «І» (U+0406) стає перед «А»: Івано-Франківська була першою
+/// у списку областей.
+int compareUk(String a, String b) {
+  final x = a.toLowerCase();
+  final y = b.toLowerCase();
+  for (var i = 0; i < x.length && i < y.length; i++) {
+    final r = _ukRank(x[i]).compareTo(_ukRank(y[i]));
+    if (r != 0) return r;
+  }
+  return x.length.compareTo(y.length);
+}
+
+int _ukRank(String c) {
+  final i = _ukAlphabet.indexOf(c);
+  return i >= 0 ? 0x10000 + i : c.codeUnitAt(0);
+}
+
 const offlineError =
     'Немає зв’язку з мережею. Перевірте інтернет чи Wi-Fi і спробуйте ще раз.';
 
