@@ -1,19 +1,19 @@
-import 'dart:async';
+export 'package:uautonomy/downloads/download_manager.dart'
+    show officialCatalogUrl;
+
 import 'dart:io';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:uautonomy/downloads/download_manager.dart';
+import 'package:uautonomy/downloads/download_widgets.dart';
 import 'package:uautonomy/legal/terms.dart';
 import 'package:uautonomy/screens/common.dart';
 import 'package:uautonomy/src/rust/api/device.dart';
 import 'package:uautonomy/src/rust/api/packs.dart';
 import 'package:uautonomy/stats/stats.dart';
 import 'package:uautonomy/widgets/brand.dart';
-
-/// Офіційний каталог: пакети лежать у GitHub Releases проєкту (тег `packs`).
-const officialCatalogUrl =
-    'https://github.com/louraider/UAutonomy/releases/download/packs/catalog.json';
 
 const _tierTitles = {
   'base': 'Базовий',
@@ -22,55 +22,68 @@ const _tierTitles = {
   'community': 'Громадський',
 };
 
-const _kindIcons = {
-  'content': Icons.menu_book,
-  'map': Icons.map,
-  'model': Icons.memory,
-};
-
-/// Пакети: що є на пристрої, завантаження з докачкою (інтернет, хаб чи
-/// інший телефон) та імпорт з флешки або файлу.
+/// Пакети: що є на пристрої, «усе потрібне одним натиском», каталог за
+/// розділами з кнопкою завантаження в кожного пакета, інші джерела
+/// (телефон, ПК, хаб) та імпорт з флешки або файлу.
 class PacksScreen extends StatefulWidget {
-  const PacksScreen({super.key, required this.onChanged});
+  const PacksScreen({
+    super.key,
+    required this.onChanged,
+    this.manager,
+    this.prefs,
+  });
 
   final VoidCallback onChanged;
+  final DownloadManager? manager;
+  final DownloadPrefs? prefs;
 
   @override
   State<PacksScreen> createState() => _PacksScreenState();
 }
 
 class _PacksScreenState extends State<PacksScreen> {
-  final _url = TextEditingController(text: officialCatalogUrl);
+  late final DownloadManager _m = widget.manager ?? DownloadManager.instance;
+  final _url = TextEditingController();
   List<PackView> _installed = const [];
-  List<PackView> _catalog = const [];
   HardwareView? _hw;
   RecommendationView? _rec;
   String? _busyId;
   ProgressView? _progress;
-  bool _fetching = false;
-
-  /// Що відомо про підпис останнього відкритого каталогу.
-  String? _catalogTrust;
 
   @override
   void initState() {
     super.initState();
     _refresh();
-    hardwareInfo().then((h) {
-      if (mounted) setState(() => _hw = h);
-    });
-    recommendation().then((r) {
-      if (mounted) setState(() => _rec = r);
-    });
+    _m.addListener(_onManager);
+    _m.ensureCatalog();
+    _refreshRecommendation();
   }
 
   @override
   void dispose() {
+    _m.removeListener(_onManager);
     _url.dispose();
     super.dispose();
   }
 
-  void _refresh() => setState(() => _installed = installedPacks());
+  int _installedCount = -1;
+
+  /// Після кожного встановленого пакета оновлюємо список «На пристрої».
+  void _onManager() {
+    if (!mounted) return;
+    final n = installedPacks().length;
+    if (n != _installedCount) {
+      _installedCount = n;
+      _installed = installedPacks();
+      _refreshRecommendation();
+    }
+    setState(() {});
+  }
+
+  void _refresh() => setState(() {
+    _installed = installedPacks();
+    _installedCount = _installed.length;
+  });
 
   /// Рекомендація залежить від вільного місця і від того, які моделі є в
   /// каталозі, тож оновлюємо її після відкриття каталогу й змін пакетів.
@@ -85,32 +98,18 @@ class _PacksScreenState extends State<PacksScreen> {
 
   void _changed() {
     _refresh();
+    _m.refreshInstalled();
     _refreshRecommendation();
     widget.onChanged();
   }
 
-  Future<void> _fetch() async {
-    if (_url.text.trim().isEmpty) return;
-    setState(() => _fetching = true);
-    try {
-      final c = await fetchCatalog(url: _url.text);
-      // Каталог за https ядро приймає лише з дійсним підписом проєкту
-      // (catalog.json.sig); з іншого пристрою підпис перевіряється в кожного
-      // пакета під час встановлення.
-      final https = _url.text.trim().toLowerCase().startsWith('https://');
-      setState(() {
-        _catalog = c;
-        _catalogTrust = https
-            ? 'Підпис каталогу перевірено: його підписано ключем проєкту.'
-            : 'Каталог з іншого пристрою. Перед встановленням застосунок перевірить підпис кожного пакета.';
-      });
-      _refreshRecommendation();
-    } catch (e) {
-      if (mounted) {
-        showError(context, 'Не вдалося відкрити каталог. ${errorText(e)}');
-      }
-    } finally {
-      if (mounted) setState(() => _fetching = false);
+  Future<void> _openOther() async {
+    final u = _url.text.trim();
+    if (u.isEmpty) return;
+    await _m.loadCatalog(u);
+    if (!mounted) return;
+    if (_m.catalogStatus == CatalogStatus.failed) {
+      showError(context, 'Не вдалося відкрити каталог. ${_m.catalogError}');
     }
   }
 
@@ -133,23 +132,6 @@ class _PacksScreenState extends State<PacksScreen> {
         ScaffoldMessenger.of(context)
             .showSnackBar(SnackBar(content: Text(okText)));
       }
-      _catalog = [
-        for (final p in _catalog)
-          p.id == id
-              ? PackView(
-                  id: p.id,
-                  title: p.title,
-                  description: p.description,
-                  tier: p.tier,
-                  kind: p.kind,
-                  version: p.version,
-                  sizeBytes: p.sizeBytes,
-                  installed: true,
-                  region: p.region,
-                  modelId: p.modelId,
-                )
-              : p,
-      ];
       _changed();
     } catch (e) {
       track('pack_install', {'pack': id, 'ok': 'no'});
@@ -284,111 +266,116 @@ class _PacksScreenState extends State<PacksScreen> {
     );
   }
 
-  /// Каталог для показу: спершу рекомендована модель, далі інші моделі,
-  /// довідники й карти. У каталозі 27 карт областей ідуть першими, і на
-  /// телефоні модель, по яку людина прийшла з «Помічника», була аж унизу.
-  /// Усередині групи порядок каталогу зберігається.
-  List<PackView> get _sortedCatalog {
-    const kindOrder = {'model': 1, 'content': 2, 'map': 3};
-    final rec = _rec?.modelId;
-    int rank(PackView p) {
-      if (p.kind == 'model' && rec != null && p.modelId == rec) return 0;
-      return kindOrder[p.kind] ?? 4;
-    }
-
-    final indexed = _catalog.indexed.toList()
-      ..sort((a, b) {
-        final r = rank(a.$2).compareTo(rank(b.$2));
-        return r != 0 ? r : a.$1.compareTo(b.$1);
-      });
-    return [for (final e in indexed) e.$2];
-  }
-
-  double? get _fraction {
-    final p = _progress;
-    if (p == null || p.total == BigInt.zero) return null;
-    return p.done / p.total;
-  }
-
-  String _progressText() {
-    final p = _progress;
-    if (p == null) return 'Підготовка…';
-    final done = formatBytes(p.done.toInt());
-    if (p.total == BigInt.zero) return 'Завантажено $done';
-    final pct = (p.done / p.total * 100).clamp(0, 100).toStringAsFixed(0);
-    return '$pct% · $done з ${formatBytes(p.total.toInt())}';
-  }
-
-  Widget _packTile(PackView p, {required bool fromCatalog}) {
-    final busy = _busyId == p.id;
-    final recommendedModel = _rec?.modelId;
+  Widget _catalogTile(PackView p) {
     final isRecommended =
-        p.kind == 'model' && p.modelId != null && p.modelId == recommendedModel;
+        p.kind == 'model' &&
+        p.modelId != null &&
+        p.modelId == (_rec?.modelId ?? _m.recommendedModelId);
     return ListTile(
-      isThreeLine: busy,
-      leading: Icon(_kindIcons[p.kind] ?? Icons.inventory_2),
+      leading: Icon(kindIcons[p.kind] ?? Icons.inventory_2),
       title: Text(p.title),
       subtitle: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
             [
-              _tierTitles[p.tier] ?? p.tier,
               formatBytes(p.sizeBytes.toInt()),
-              'v${p.version}',
-              if (isRecommended) 'рекомендовано',
+              if (isRecommended) 'рекомендовано для цього пристрою',
+              if (_m.stateOf(p.id) == PackState.update) 'є нова версія',
             ].join(' · '),
           ),
           if (p.description.isNotEmpty) Text(p.description),
-          if (busy) ...[
-            const SizedBox(height: 8),
-            LinearProgressIndicator(value: _fraction),
-            const SizedBox(height: 4),
-            Text(_progressText(), style: Theme.of(context).textTheme.bodySmall),
-            const SizedBox(height: 4),
-          ],
+          PackStatusLine(manager: _m, id: p.id),
         ],
       ),
-      trailing: fromCatalog
-          ? (p.installed
-                ? const Icon(Icons.check_circle)
-                : busy
-                ? IconButton(
-                    tooltip: 'Зупинити (продовжиться з місця зупинки)',
-                    icon: const Icon(Icons.pause),
-                    onPressed: cancelDownload,
-                  )
-                : IconButton(
-                    tooltip: 'Завантажити',
-                    icon: const Icon(Icons.download),
-                    onPressed: _busyId != null
-                        ? null
-                        : () => _run(
-                            p.id,
-                            downloadPack(id: p.id),
-                            'Встановлено: ${p.title}',
-                          ),
-                  ))
-          : PopupMenuButton<String>(
-              onSelected: (v) => v == 'export' ? _export(p) : _remove(p),
-              itemBuilder: (_) => const [
-                PopupMenuItem(
-                  value: 'export',
-                  child: Text('Зберегти у файл (.uapack)'),
-                ),
-                PopupMenuItem(value: 'remove', child: Text('Видалити')),
-              ],
-            ),
+      trailing: PackActionIcon(manager: _m, pack: p),
     );
+  }
+
+  Widget _installedTile(PackView p) => ListTile(
+    leading: Icon(kindIcons[p.kind] ?? Icons.inventory_2),
+    title: Text(p.title),
+    subtitle: Text(
+      [
+        _tierTitles[p.tier] ?? p.tier,
+        formatBytes(p.sizeBytes.toInt()),
+        'v${p.version}',
+      ].join(' · '),
+    ),
+    trailing: PopupMenuButton<String>(
+      onSelected: (v) => v == 'export' ? _export(p) : _remove(p),
+      itemBuilder: (_) => const [
+        PopupMenuItem(
+          value: 'export',
+          child: Text('Зберегти у файл (.uapack)'),
+        ),
+        PopupMenuItem(value: 'remove', child: Text('Видалити')),
+      ],
+    ),
+  );
+
+  /// Каталог за розділами: помічник ШІ (рекомендована модель першою),
+  /// довідники, карти (27 областей згорнуто, щоб не ховали решту).
+  List<Widget> _catalogSections(TextTheme t) {
+    final rec = _rec?.modelId ?? _m.recommendedModelId;
+    final models = _m.catalog.where((p) => p.kind == 'model').toList()
+      ..sort((a, b) {
+        int r(PackView p) => p.modelId == rec ? 0 : 1;
+        return r(a).compareTo(r(b));
+      });
+    final content = _m.catalog.where((p) => p.kind == 'content').toList();
+    final maps = _m.catalog.where((p) => p.kind == 'map').toList()
+      ..sort(
+        (a, b) =>
+            DownloadManager.regionTitle(a)
+                .compareTo(DownloadManager.regionTitle(b)),
+      );
+    final other = _m.catalog
+        .where((p) => !const {'model', 'content', 'map'}.contains(p.kind))
+        .toList();
+    Widget heading(String s) => Padding(
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+      child: Text(s, style: t.titleSmall),
+    );
+    final mapsInstalled = maps
+        .where((p) => _m.stateOf(p.id) == PackState.installed)
+        .length;
+    return [
+      if (models.isNotEmpty) ...[
+        heading('Помічник ШІ'),
+        for (final p in models) _catalogTile(p),
+      ],
+      if (content.isNotEmpty) ...[
+        heading('Довідники й енциклопедії'),
+        for (final p in content) _catalogTile(p),
+      ],
+      if (maps.isNotEmpty)
+        ExpansionTile(
+          leading: const Icon(Icons.map),
+          title: Text('Карти областей (${maps.length})'),
+          subtitle: Text(
+            mapsInstalled == 0
+                ? 'Натисніть, щоб вибрати область'
+                : 'Встановлено: $mapsInstalled',
+          ),
+          children: [for (final p in maps) _catalogTile(p)],
+        ),
+      for (final p in other) _catalogTile(p),
+    ];
   }
 
   @override
   Widget build(BuildContext context) {
     final t = Theme.of(context).textTheme;
+    final importing = _busyId == 'import';
+    final fraction = progressFraction(_progress);
     return ContentWidth(
       child: ListView(
         children: [
           const TabHeader(title: 'Пакети'),
+          DownloadQueueCard(manager: _m),
+          if (_m.isOfficial)
+            RecommendedSetCard(manager: _m, prefs: widget.prefs),
           _deviceCard(),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -398,15 +385,15 @@ class _PacksScreenState extends State<PacksScreen> {
             const ListTile(
               title: Text('Лише базовий пакет (термінові картки)'),
             ),
-          for (final p in _installed) _packTile(p, fromCatalog: false),
-          if (_busyId == 'import') ...[
+          for (final p in _installed) _installedTile(p),
+          if (importing) ...[
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: LinearProgressIndicator(value: _fraction),
+              child: LinearProgressIndicator(value: fraction),
             ),
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
-              child: Text(_progressText()),
+              child: Text(progressText(_progress)),
             ),
           ],
           Padding(
@@ -416,7 +403,7 @@ class _PacksScreenState extends State<PacksScreen> {
               runSpacing: 8,
               children: [
                 OutlinedButton.icon(
-                  onPressed: _busyId != null ? null : _importFile,
+                  onPressed: _busyId != null || _m.busy ? null : _importFile,
                   icon: const Icon(Icons.usb),
                   label: const Text('З флешки чи файлу'),
                 ),
@@ -424,7 +411,9 @@ class _PacksScreenState extends State<PacksScreen> {
                 // лише до окремих файлів.
                 if (!Platform.isAndroid && !Platform.isIOS)
                   OutlinedButton.icon(
-                    onPressed: _busyId != null ? null : _importFolder,
+                    onPressed: _busyId != null || _m.busy
+                        ? null
+                        : _importFolder,
                     icon: const Icon(Icons.folder_open),
                     label: const Text('З теки'),
                   ),
@@ -434,49 +423,80 @@ class _PacksScreenState extends State<PacksScreen> {
           const Divider(),
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-            child: Text('Завантажити', style: t.titleMedium),
-          ),
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: _url,
-                    keyboardType: TextInputType.url,
-                    decoration: const InputDecoration(
-                      labelText: 'Адреса каталогу або іншого пристрою',
-                      hintText: 'http://192.168.43.1:8642',
-                      border: OutlineInputBorder(),
-                    ),
-                    onSubmitted: (_) => _fetch(),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                _fetching
-                    ? const CircularProgressIndicator()
-                    : IconButton.filled(
-                        tooltip: 'Відкрити каталог',
-                        icon: const Icon(Icons.arrow_forward),
-                        onPressed: _fetch,
-                      ),
-              ],
-            ),
-          ),
-          const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 16),
             child: Text(
-              'Адресу іншого телефона чи ПК з «Автономією» видно на його вкладці «Обмін» (там є QR-код). '
-              'Перерване завантаження продовжиться з місця зупинки.',
+              _m.isOfficial ? 'Усі пакети' : 'Пакети з іншого пристрою',
+              style: t.titleMedium,
             ),
           ),
-          if (_catalogTrust != null && _catalog.isNotEmpty)
+          if (_m.catalogStatus == CatalogStatus.loading)
+            const Padding(
+              padding: EdgeInsets.all(16),
+              child: LinearProgressIndicator(),
+            ),
+          if (_m.catalogStatus == CatalogStatus.failed)
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: CatalogProblem(manager: _m),
+            ),
+          if (_m.catalogStatus == CatalogStatus.ready)
             ListTile(
               leading: const Icon(Icons.verified_user),
-              title: Text(_catalogTrust!),
+              title: Text(
+                _m.catalogUrl.toLowerCase().startsWith('https://')
+                    ? 'Підпис каталогу перевірено: його підписано ключем проєкту.'
+                    : 'Каталог з іншого пристрою. Перед встановленням застосунок перевірить підпис кожного пакета.',
+              ),
             ),
-          for (final p in _sortedCatalog) _packTile(p, fromCatalog: true),
+          ..._catalogSections(t),
           const Divider(),
+          ExpansionTile(
+            leading: const Icon(Icons.devices),
+            title: const Text('З іншого телефона, ПК чи хаба'),
+            subtitle: const Text('Коли інтернету немає, а поруч є «Автономія»'),
+            childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+            children: [
+              const Text(
+                'Адресу іншого телефона чи ПК з «Автономією» видно на його вкладці «Обмін» (там є QR-код).',
+              ),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _url,
+                      keyboardType: TextInputType.url,
+                      decoration: const InputDecoration(
+                        labelText: 'Адреса пристрою',
+                        hintText: 'http://192.168.43.1:8642',
+                        border: OutlineInputBorder(),
+                      ),
+                      onSubmitted: (_) => _openOther(),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  _m.catalogStatus == CatalogStatus.loading
+                      ? const CircularProgressIndicator()
+                      : IconButton.filled(
+                          tooltip: 'Відкрити каталог',
+                          icon: const Icon(Icons.arrow_forward),
+                          onPressed: _m.busy ? null : _openOther,
+                        ),
+                ],
+              ),
+              if (!_m.isOfficial) ...[
+                const SizedBox(height: 8),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: TextButton(
+                    onPressed: _m.busy
+                        ? null
+                        : () => _m.loadCatalog(officialCatalogUrl),
+                    child: const Text('Повернутися до офіційного каталогу'),
+                  ),
+                ),
+              ],
+            ],
+          ),
           ListTile(
             leading: const Icon(Icons.gavel),
             title: const Text('Умови використання'),

@@ -1,6 +1,8 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
+import 'package:uautonomy/downloads/download_manager.dart';
+import 'package:uautonomy/downloads/download_widgets.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:uautonomy/src/rust/api/maps.dart';
 import 'package:uautonomy/widgets/brand.dart';
@@ -17,7 +19,11 @@ class MapsScreen extends StatefulWidget {
     super.key,
     required this.version,
     required this.onOpenPacks,
+    this.prefs,
   });
+
+  /// Звідси беремо область, яку людина вибрала для завантаження.
+  final DownloadPrefs? prefs;
 
   final ValueListenable<int> version;
   final VoidCallback onOpenPacks;
@@ -61,7 +67,14 @@ class _MapsScreenState extends State<MapsScreen> {
           : (installed.isEmpty ? regions : installed)
                 .where((r) => r.id == _region!.id)
                 .firstOrNull;
-      _select(keep ?? (installed.isNotEmpty ? installed.first : regions.first));
+      // Нічого не встановлено: показуємо область, яку людина вибрала
+      // (а не першу за абеткою Вінницьку), з кнопкою завантаження.
+      final preferred = widget.prefs?.region;
+      final chosen = regions.where((r) => r.id == preferred).firstOrNull;
+      _select(
+        keep ??
+            (installed.isNotEmpty ? installed.first : chosen ?? regions.first),
+      );
     });
   }
 
@@ -71,24 +84,37 @@ class _MapsScreenState extends State<MapsScreen> {
   }
 
   Widget _missing(RegionView? r) => Center(
-    child: Padding(
+    child: SingleChildScrollView(
       padding: const EdgeInsets.all(24),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Icon(Icons.map_outlined, size: 48),
-          const SizedBox(height: 12),
-          Text(
-            'Карта області «${r?.title ?? ''}» ще не завантажена. '
-            'Після завантаження пакета карта працює без інтернету.',
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 16),
-          FilledButton(
-            onPressed: widget.onOpenPacks,
-            child: const Text('До пакетів'),
-          ),
-        ],
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 480),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const Icon(Icons.map_outlined, size: 48),
+            const SizedBox(height: 12),
+            Text(
+              'Карта «${r?.title ?? ''}» ще не завантажена. '
+              'Завантажте її один раз, і вона працюватиме без інтернету. '
+              'Іншу область виберіть у списку вгорі.',
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 16),
+            if (r != null)
+              PackDownloadPanel(
+                key: ValueKey('map-${r.id}'),
+                manager: DownloadManager.instance,
+                find: (m) => m.mapFor(r.id),
+                label: 'карту',
+              ),
+            const SizedBox(height: 8),
+            TextButton(
+              onPressed: widget.onOpenPacks,
+              child: const Text('Інші області й усе рекомендоване в «Пакетах»'),
+            ),
+          ],
+        ),
       ),
     ),
   );

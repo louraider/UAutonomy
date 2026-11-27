@@ -4,13 +4,16 @@ import 'package:flutter/services.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:uautonomy/distribution.dart';
+import 'package:uautonomy/downloads/download_manager.dart';
 import 'package:uautonomy/screens/chat_screen.dart';
 import 'package:uautonomy/screens/library_screen.dart';
 import 'package:uautonomy/screens/maps_screen.dart';
 import 'package:uautonomy/screens/packs_screen.dart';
 import 'package:uautonomy/screens/settings_screen.dart';
 import 'package:uautonomy/screens/share_screen.dart';
+import 'package:uautonomy/screens/welcome_screen.dart';
 import 'package:uautonomy/src/rust/api/library.dart';
+import 'package:uautonomy/src/rust/api/packs.dart' show installedPacks;
 import 'package:uautonomy/src/rust/frb_generated.dart';
 import 'package:uautonomy/stats/stats.dart';
 import 'package:uautonomy/theme.dart';
@@ -79,6 +82,11 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   int _tab = 0;
   UpdateInfo? _update;
+  late final DownloadPrefs? _prefs = widget.dataDir == null
+      ? null
+      : DownloadPrefs(widget.dataDir!);
+  final _downloads = DownloadManager.instance;
+  bool _welcomePending = false;
 
   static const _tabNames = ['library', 'assistant', 'maps', 'packs', 'share'];
 
@@ -90,9 +98,29 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
-    // Згоду на статистику питаємо одразу, раз, поверх головного екрана.
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) askStatsConsent(context);
+    _downloads.onInstalled = () => libraryVersion.value++;
+    // Перший запуск: одразу пропонуємо завантажити карту, енциклопедію й
+    // модель. Тести застосунку (без dataDir) цей екран не бачать.
+    final prefs = _prefs;
+    if (prefs != null && !prefs.welcomeDone && widget.startupError == null) {
+      bool fresh;
+      try {
+        fresh = installedPacks().isEmpty;
+      } catch (_) {
+        fresh = false;
+      }
+      if (fresh) {
+        _welcomePending = true;
+      } else {
+        prefs.markWelcomeDone();
+      }
+    }
+    // Перший запуск: спершу питаємо згоду на статистику (раз), потім
+    // пропонуємо завантаження.
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!mounted) return;
+      await askStatsConsent(context);
+      if (_welcomePending && mounted) _showWelcome();
     });
     final dir = widget.dataDir;
     if (dir != null && updateCheckSupported) {
@@ -102,6 +130,21 @@ class _HomeScreenState extends State<HomeScreen> {
         if (mounted && u != null) setState(() => _update = u);
       });
     }
+  }
+
+  Future<void> _showWelcome() async {
+    final started = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(
+        fullscreenDialog: true,
+        builder: (c) => WelcomeScreen(
+          manager: _downloads,
+          prefs: _prefs,
+          onDone: (s) => Navigator.of(c).pop(s),
+        ),
+      ),
+    );
+    _prefs?.markWelcomeDone();
+    if (started == true && mounted) _goTo(3);
   }
 
   void _dismissUpdate() {
@@ -116,8 +159,16 @@ class _HomeScreenState extends State<HomeScreen> {
     final pages = [
       LibraryScreen(version: libraryVersion),
       ChatScreen(version: libraryVersion, onOpenPacks: () => _goTo(3)),
-      MapsScreen(version: libraryVersion, onOpenPacks: () => _goTo(3)),
-      PacksScreen(onChanged: () => libraryVersion.value++),
+      MapsScreen(
+        version: libraryVersion,
+        onOpenPacks: () => _goTo(3),
+        prefs: _prefs,
+      ),
+      PacksScreen(
+        onChanged: () => libraryVersion.value++,
+        manager: _downloads,
+        prefs: _prefs,
+      ),
       const ShareScreen(),
     ];
     // «Назад» з іншої вкладки веде на «Довідку», а не закриває застосунок:
