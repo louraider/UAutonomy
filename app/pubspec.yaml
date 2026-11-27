@@ -149,18 +149,19 @@ flutter:
   # For details regarding fonts from package dependencies,
   # see https://flutter.dev/to/font-from-package
 
-# Пакет MSIX для Microsoft Store (`dart run msix:create --store`). Справжні
-# identity_name, publisher і publisher_display_name видає Partner Center
-# після резервування назви; CI бере їх зі змінних репозиторію MSSTORE_*
-# (див. docs/stores.md). Тут заглушки, щоб пакет збирався й без них.
+# Пакет MSIX для Microsoft Store (`dart run msix:create --store`).
+# Ідентичність видав Partner Center (Store ID 9ND0BDP276VT, сторінка
+# Product identity); вона публічна і є в кожному пакеті. Назви
+# «Автономія» і «UAutonomy» зарезервовано для цього застосунку.
 # Store сам підписує пакет, власний сертифікат не потрібен.
 msix_config:
   display_name: Автономія
-  publisher_display_name: Avtonomiia
-  identity_name: Avtonomiia.Placeholder
-  publisher: CN=00000000-0000-0000-0000-000000000000
+  publisher_display_name: Louraider
+  identity_name: Louraider.5222222E8735A
+  publisher: CN=E633808B-56CC-4E16-9BA3-2C01AFC4281F
   logo_path: ../brand/mark-512.png
-  languages: uk-ua
+  # Українська основна; англійська, щоб у Store була сторінка UAutonomy.
+  languages: uk-ua,en-us
   # Обмін піднімає вебсервер у локальній мережі.
   capabilities: internetClient,internetClientServer,privateNetworkClientServer
   output_name: avtonomiia

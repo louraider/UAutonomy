@@ -120,9 +120,16 @@ jobs:
       # щоб сказати людині про нову версію (lib/update/update_check.dart).
       # Збірки для Google Play і Microsoft Store мають задавати
       # UAUTONOMY_DIST=play / msstore: там оновлює магазин, і перевірки немає.
-      - run: flutter build apk --release --split-per-abi --split-debug-info=build/symbols --build-number=${{ github.run_number }} --dart-define=UAUTONOMY_BUILD=${{ github.run_number }} --dart-define=UAUTONOMY_DIST=site
+      # Maven Central часом відповідає 429 (забагато запитів): повтор.
+      - name: flutter build apk
         env:
           UAUTONOMY_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+        run: |
+          for i in 1 2 3; do
+            flutter build apk --release --split-per-abi --split-debug-info=build/symbols --build-number=${{ github.run_number }} --dart-define=UAUTONOMY_BUILD=${{ github.run_number }} --dart-define=UAUTONOMY_DIST=site && exit 0
+            echo "::warning::спроба $i не вдалася, повтор"; sleep 60
+          done
+          exit 1
       - name: Сертифікат підпису і розмір APK
         working-directory: app/build/app/outputs/flutter-apk
         run: |
