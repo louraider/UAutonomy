@@ -325,11 +325,7 @@ class _PacksScreenState extends State<PacksScreen> {
       });
     final content = _m.catalog.where((p) => p.kind == 'content').toList();
     final maps = _m.catalog.where((p) => p.kind == 'map').toList()
-      ..sort(
-        (a, b) =>
-            DownloadManager.regionTitle(a)
-                .compareTo(DownloadManager.regionTitle(b)),
-      );
+      ..sort(DownloadManager.compareRegions);
     final other = _m.catalog
         .where((p) => !const {'model', 'content', 'map'}.contains(p.kind))
         .toList();

@@ -5,6 +5,18 @@ import 'package:llamadart/llamadart.dart';
 import 'package:uautonomy/src/rust/api/ai.dart';
 import 'package:uautonomy/src/rust/api/device.dart';
 
+/// Номери джерел, на які посилається текст: «[1]», «[2, 3]», «[1][4]».
+Set<int> citedNumbers(String text) {
+  final out = <int>{};
+  for (final m in RegExp(r'\[(\d+(?:\s*,\s*\d+)*)\]').allMatches(text)) {
+    for (final n in m.group(1)!.split(',')) {
+      final v = int.tryParse(n.trim());
+      if (v != null) out.add(v);
+    }
+  }
+  return out;
+}
+
 /// Одна відповідь помічника: текст, що надходить потоком, і джерела.
 class AiAnswer {
   AiAnswer(this.question, this.sources);
@@ -29,6 +41,19 @@ class AiAnswer {
   /// Шматки потоку не дорівнюють токенам: llamadart віддає їх пачками,
   /// тож рахунок за шматками занижував швидкість у кілька разів.
   int? tokens;
+
+  /// Джерела під відповіддю. Поки модель пише, показуємо всі знайдені;
+  /// коли закінчила — лише ті, на які вона послалась («[1]», «[2, 3]»).
+  /// Інакше під «у бібліотеці цього немає» стояли п'ять карток не на тему
+  /// («Напад судом» до запитання про продукти без холодильника).
+  List<SourceView> get shownSources {
+    if (!done) return sources;
+    final cited = citedNumbers(text.toString());
+    return [
+      for (final s in sources)
+        if (cited.contains(s.number)) s,
+    ];
+  }
 
   double? get tokensPerSecond {
     final t = totalMs, f = firstTokenMs;

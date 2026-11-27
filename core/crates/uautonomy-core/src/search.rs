@@ -384,14 +384,19 @@ impl Library {
         }
         variants.retain(|v| !v.is_empty());
         variants.dedup();
+        // Перенаправлення й стаття, на яку воно веде, — одна стаття: інакше
+        // «Гепатит A» (латинська A) і «Гепатит А» показувались двічі.
+        let mut seen: Vec<(&str, u32)> = Vec::new();
         for (pack, zim) in &self.zims {
             let ns = zim.content_namespace();
             for v in &variants {
                 for e in zim.find_by_title_prefix(ns, v, limit) {
-                    if out.iter().any(|(p, _, x)| p == pack && x.index == e.index) {
+                    let target = zim.resolve(&e).map_or(e.index, |r| r.index);
+                    if seen.contains(&(pack.as_str(), target)) {
                         continue;
                     }
                     if title_overlap(&e.title, q) > 0.0 {
+                        seen.push((pack.as_str(), target));
                         out.push((pack.clone(), zim.clone(), e));
                     }
                 }
@@ -449,7 +454,16 @@ impl Library {
                     (ch, s)
                 })
                 .max_by(|a, b| a.1.total_cmp(&b.1));
-            if let Some((text, score)) = best {
+            // Заголовок збігся лише одним словом, і в тексті решти запитання
+            // немає — стаття не про те: до «тривожної валізки» помічник
+            // додавав «Тривожний розлад» і «Тривожний невроз».
+            let relevant = |text: &str| {
+                let mut words = text::tokens(&e.title);
+                words.extend(text::tokens(text));
+                let hit = q.iter().filter(|w| words.contains(w)).count();
+                hit >= q.len().min(2)
+            };
+            if let Some((text, score)) = best.filter(|(t, _)| relevant(t)) {
                 out.push(Passage {
                     key: format!("zim:{pack}/{}", e.path()),
                     title: e.title.clone(),
@@ -590,5 +604,37 @@ mod tests {
             .retrieve("знезараження", 5)
             .iter()
             .all(|x| !x.key.starts_with("zim:")));
+    }
+
+    #[test]
+    fn zim_article_matching_one_word_is_not_a_source() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("m.zim");
+        let mut f = std::fs::File::create(&path).unwrap();
+        write_zim(
+            vec![Item {
+                namespace: 'C',
+                url: "Тривожний_розлад".into(),
+                title: "Тривожний розлад".into(),
+                mime: "text/html".into(),
+                data: "<p>Тривожний розлад — психічний розлад із постійною тривогою.</p>"
+                    .as_bytes()
+                    .to_vec(),
+            }],
+            None,
+            &mut f,
+        )
+        .unwrap();
+        drop(f);
+        let mut l = lib();
+        l.add_zim("wiki", Arc::new(Zim::open(&path).unwrap()));
+        let zim_keys = |q: &str| {
+            l.retrieve(q, 5)
+                .into_iter()
+                .filter(|p| p.key.starts_with("zim:"))
+                .count()
+        };
+        assert_eq!(zim_keys("що покласти в тривожну валізку"), 0);
+        assert_eq!(zim_keys("тривожний розлад"), 1);
     }
 }

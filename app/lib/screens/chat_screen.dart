@@ -396,13 +396,13 @@ class _AnswerTile extends StatelessWidget {
                 style: t.bodySmall,
               ),
             ),
-          if (answer.sources.isNotEmpty) ...[
+          if (answer.shownSources.isNotEmpty) ...[
             const SizedBox(height: 8),
             Wrap(
               spacing: 6,
               runSpacing: 6,
               children: [
-                for (final s in answer.sources)
+                for (final s in answer.shownSources)
                   ActionChip(
                     avatar: Text('${s.number}'),
                     label: Text(
@@ -415,7 +415,9 @@ class _AnswerTile extends StatelessWidget {
             ),
           ] else if (answer.done && answer.route == null)
             Text(
-              'У бібліотеці не знайдено джерел за цим запитанням.',
+              answer.sources.isEmpty
+                  ? 'У бібліотеці не знайдено джерел за цим запитанням.'
+                  : 'Відповідь не спирається на жодне джерело з бібліотеки.',
               style: t.bodySmall,
             ),
           if (answer.done &&

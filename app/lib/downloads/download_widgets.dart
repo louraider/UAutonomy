@@ -424,7 +424,18 @@ class _RecommendedSetCardState extends State<RecommendedSetCard> {
       );
     }
     final regions = m.mapRegions;
-    final region = regions.any((r) => r.$1 == _region) ? _region : null;
+    // Картку на «Пакетах» створено ще до вибору на екрані «Вітаємо», тож
+    // область беремо з налаштувань щоразу, а якщо її немає — з уже
+    // встановленої карти. Інакше тут писало «Спершу виберіть область»,
+    // хоча карта Києва вже стояла.
+    final wanted =
+        _region ??
+        widget.prefs?.region ??
+        m.catalog
+            .where((p) => p.kind == 'map' && p.installed && p.region != null)
+            .map((p) => p.region)
+            .firstOrNull;
+    final region = regions.any((r) => r.$1 == wanted) ? wanted : null;
     final set = m.recommendedSet(regionId: region);
     final chosen = [
       for (final p in set)
@@ -452,6 +463,9 @@ class _RecommendedSetCardState extends State<RecommendedSetCard> {
         ),
         const SizedBox(height: 12),
         DropdownButtonFormField<String>(
+          // initialValue читається лише раз; ключ перебудовує поле, коли
+          // область з'являється пізніше.
+          key: ValueKey(region),
           initialValue: region,
           isExpanded: true,
           decoration: const InputDecoration(

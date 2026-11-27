@@ -58,8 +58,11 @@ Future<void> askStatsConsent(BuildContext context, {Stats? stats}) async {
       ],
     ),
   );
-  await s.setConsent(yes ?? false);
-  if (yes == true) track('app_open', {'dist': distChannel});
+  // Системна «Назад» закриває діалог без відповіді. Це не «Ні»: нічого не
+  // записуємо й не надсилаємо, а спитаємо ще раз на наступному запуску.
+  if (yes == null) return;
+  await s.setConsent(yes);
+  if (yes) track('app_open', {'dist': distChannel});
 }
 
 /// Налаштування: статистика, відгук, умови й приватність.
