@@ -168,7 +168,7 @@ class _ShareScreenState extends State<ShareScreen> {
         unawaited(_checkFirewallSoon());
       }
     } catch (e) {
-      if (mounted) showError(context, 'Не вдалося увімкнути обмін: $e');
+      if (mounted) showError(context, 'Не вдалося увімкнути обмін. ${errorText(e)}');
     } finally {
       if (mounted) setState(() => _busy = false);
     }

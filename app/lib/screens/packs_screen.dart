@@ -106,7 +106,7 @@ class _PacksScreenState extends State<PacksScreen> {
       });
       _refreshRecommendation();
     } catch (e) {
-      if (mounted) showError(context, 'Не вдалося відкрити каталог: $e');
+      if (mounted) showError(context, 'Не вдалося відкрити каталог. ${errorText(e)}');
     } finally {
       if (mounted) setState(() => _fetching = false);
     }
@@ -282,6 +282,26 @@ class _PacksScreenState extends State<PacksScreen> {
     );
   }
 
+  /// Каталог для показу: спершу рекомендована модель, далі інші моделі,
+  /// довідники й карти. У каталозі 27 карт областей ідуть першими, і на
+  /// телефоні модель, по яку людина прийшла з «Помічника», була аж унизу.
+  /// Усередині групи порядок каталогу зберігається.
+  List<PackView> get _sortedCatalog {
+    const kindOrder = {'model': 1, 'content': 2, 'map': 3};
+    final rec = _rec?.modelId;
+    int rank(PackView p) {
+      if (p.kind == 'model' && rec != null && p.modelId == rec) return 0;
+      return kindOrder[p.kind] ?? 4;
+    }
+
+    final indexed = _catalog.indexed.toList()
+      ..sort((a, b) {
+        final r = rank(a.$2).compareTo(rank(b.$2));
+        return r != 0 ? r : a.$1.compareTo(b.$1);
+      });
+    return [for (final e in indexed) e.$2];
+  }
+
   double? get _fraction {
     final p = _progress;
     if (p == null || p.total == BigInt.zero) return null;
@@ -453,7 +473,7 @@ class _PacksScreenState extends State<PacksScreen> {
               leading: const Icon(Icons.verified_user),
               title: Text(_catalogTrust!),
             ),
-          for (final p in _catalog) _packTile(p, fromCatalog: true),
+          for (final p in _sortedCatalog) _packTile(p, fromCatalog: true),
           const Divider(),
           ListTile(
             leading: const Icon(Icons.gavel),

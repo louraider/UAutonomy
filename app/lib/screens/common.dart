@@ -54,9 +54,36 @@ String formatBytes(num bytes) {
 }
 
 void showError(BuildContext context, Object e) {
+  final text = errorText(e);
   ScaffoldMessenger.of(context).showSnackBar(
-    SnackBar(content: Text('$e'), duration: const Duration(seconds: 6)),
+    SnackBar(content: Text(text), duration: const Duration(seconds: 6)),
   );
+}
+
+const offlineError =
+    'Немає зв’язку з мережею. Перевірте інтернет чи Wi-Fi і спробуйте ще раз.';
+
+/// Текст помилки для людини. Помилки з Rust приходять як
+/// «AnyhowException(помилка мережі: io: failed to lookup address…)», і
+/// без інтернету людина бачила саме це.
+String errorText(Object e) {
+  var s = '$e'.trim();
+  const wrapper = 'AnyhowException(';
+  if (s.startsWith(wrapper) && s.endsWith(')')) {
+    s = s.substring(wrapper.length, s.length - 1).trim();
+  }
+  final lower = s.toLowerCase();
+  const offlineSigns = [
+    'failed to lookup address',
+    'no address associated',
+    'network is unreachable',
+    'dns error',
+    'connection refused',
+    'connection reset',
+    'timed out',
+  ];
+  if (offlineSigns.any(lower.contains)) return offlineError;
+  return s;
 }
 
 /// Повертає локальний шлях до вибраного файлу. На Android вибір часто

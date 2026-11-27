@@ -99,7 +99,7 @@ jobs:
               --build-number=$CODE \
               --dart-define=UAUTONOMY_BUILD=${{ github.run_number }} \
               --dart-define=UAUTONOMY_DIST=play \
-              --dart-define=UAUTONOMY_STATS_KEY=${{ vars.UAUTONOMY_STATS_KEY }} --dart-define=UAUTONOMY_STATS_HOST=${{ vars.UAUTONOMY_STATS_HOST }} \
+              --dart-define=UAUTONOMY_STATS_KEY=${{ vars.UAUTONOMY_STATS_KEY || 'A-EU-3389314094' }} --dart-define=UAUTONOMY_STATS_HOST=${{ vars.UAUTONOMY_STATS_HOST }} \
               --split-debug-info=build/symbols && exit 0
             echo "::warning::спроба $i не вдалася, повтор"; sleep 60
           done
@@ -183,7 +183,7 @@ jobs:
           channel: stable
           cache: true
       - run: flutter pub get
-      - run: flutter build windows --release --build-number=${{ github.run_number }} --dart-define=UAUTONOMY_BUILD=${{ github.run_number }} --dart-define=UAUTONOMY_DIST=msstore --dart-define=UAUTONOMY_STATS_KEY=${{ vars.UAUTONOMY_STATS_KEY }} --dart-define=UAUTONOMY_STATS_HOST=${{ vars.UAUTONOMY_STATS_HOST }}
+      - run: flutter build windows --release --build-number=${{ github.run_number }} --dart-define=UAUTONOMY_BUILD=${{ github.run_number }} --dart-define=UAUTONOMY_DIST=msstore --dart-define=UAUTONOMY_STATS_KEY=${{ vars.UAUTONOMY_STATS_KEY || 'A-EU-3389314094' }} --dart-define=UAUTONOMY_STATS_HOST=${{ vars.UAUTONOMY_STATS_HOST }}
       # Версія MSIX: чотири числа, останнє Store вимагає нулем.
       - name: Версія пакета
         shell: pwsh
@@ -207,7 +207,7 @@ jobs:
           $msix = Get-ChildItem build/windows/x64/runner/Release/avtonomiia-test.msix
           "Пакет: $($msix.Length / 1MB) МБ"
           Add-AppxPackage -Path $msix.FullName
-          $pkg = Get-AppxPackage | Where-Object Name -eq 'Avtonomiia.Placeholder'
+          $pkg = Get-AppxPackage | Where-Object Name -eq 'Louraider.5222222E8735A'
           if (-not $pkg) { throw 'пакет не встановився' }
           Start-Process "shell:AppsFolder\$($pkg.PackageFamilyName)!uautonomy"
           Start-Sleep -Seconds 20
@@ -219,24 +219,11 @@ jobs:
           Remove-AppxPackage $pkg.PackageFullName
           Remove-Item $msix.FullName
       # Пакет для Store: без підпису (Store підписує сам), з ідентичністю
-      # з Partner Center (змінні репозиторію MSSTORE_IDENTITY_NAME,
-      # MSSTORE_PUBLISHER, MSSTORE_PUBLISHER_DISPLAY_NAME). Без них збирається
-      # пакет-заглушка, щоб перевірити саму збірку.
+      # з Partner Center (msix_config у pubspec.yaml).
       - name: MSIX для Store
         shell: pwsh
-        env:
-          ID_NAME: ${{ vars.MSSTORE_IDENTITY_NAME }}
-          PUBLISHER: ${{ vars.MSSTORE_PUBLISHER }}
-          PUBLISHER_NAME: ${{ vars.MSSTORE_PUBLISHER_DISPLAY_NAME }}
         run: |
-          $a = @('run', 'msix:create', '--store', '--version', $env:MSIX_VERSION)
-          if ($env:ID_NAME) {
-            $a += @('--identity-name', $env:ID_NAME, '--publisher', $env:PUBLISHER, '--publisher-display-name', $env:PUBLISHER_NAME)
-          } else {
-            "::warning::Немає змінних MSSTORE_*: пакет зі заглушкою замість ідентичності з Partner Center"
-            if ('${{ github.event_name }}' -eq 'workflow_dispatch' -and '${{ inputs.msstore }}' -eq 'true') { throw 'для надсилання в Store потрібні MSSTORE_*' }
-          }
-          dart @a
+          dart run msix:create --store --version $env:MSIX_VERSION
           if ($LASTEXITCODE -ne 0) { throw "msix:create: код $LASTEXITCODE" }
           Get-Item build/windows/x64/runner/Release/avtonomiia.msix | Select-Object Name, Length
       - uses: actions/upload-artifact@v4
@@ -257,7 +244,7 @@ jobs:
           SELLER: ${{ secrets.MSSTORE_SELLER_ID }}
           CLIENT: ${{ secrets.MSSTORE_CLIENT_ID }}
           SECRET: ${{ secrets.MSSTORE_CLIENT_SECRET }}
-          PRODUCT: ${{ vars.MSSTORE_PRODUCT_ID }}
+          PRODUCT: 9ND0BDP276VT
         run: |
           msstore reconfigure --tenantId $env:TENANT --sellerId $env:SELLER --clientId $env:CLIENT --clientSecret $env:SECRET
           msstore publish build/windows/x64/runner/Release/avtonomiia.msix -id $env:PRODUCT

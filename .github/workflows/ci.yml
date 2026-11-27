@@ -26,6 +26,9 @@ jobs:
       - name: Базовий пакет із content/
         run: python3 tools/build_base_pack.py
         working-directory: .
+      - name: Сайт - SEO-файли збігаються з джерелом
+        run: python3 tools/site/build_seo.py --check
+        working-directory: .
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: rustfmt, clippy
@@ -117,12 +120,20 @@ jobs:
       # щоб сказати людині про нову версію (lib/update/update_check.dart).
       # Збірки для Google Play і Microsoft Store мають задавати
       # UAUTONOMY_DIST=play / msstore: там оновлює магазин, і перевірки немає.
-      # UAUTONOMY_STATS_KEY (змінна репозиторію) вмикає анонімну статистику
-      # за згодою людини (lib/stats/stats.dart). Без неї застосунок не питає
-      # згоди і нічого не надсилає.
-      - run: flutter build apk --release --split-per-abi --split-debug-info=build/symbols --build-number=${{ github.run_number }} --dart-define=UAUTONOMY_BUILD=${{ github.run_number }} --dart-define=UAUTONOMY_DIST=site --dart-define=UAUTONOMY_STATS_KEY=${{ vars.UAUTONOMY_STATS_KEY }} --dart-define=UAUTONOMY_STATS_HOST=${{ vars.UAUTONOMY_STATS_HOST }}
+      # UAUTONOMY_STATS_KEY вмикає анонімну статистику за згодою людини
+      # (lib/stats/stats.dart). Ключ Aptabase не секретний і однаково лежить
+      # у застосунку, тому стоїть тут; змінна репозиторію має перевагу.
+      # Без ключа застосунок не питає згоди і нічого не надсилає.
+      # Maven Central часом відповідає 429 (забагато запитів): повтор.
+      - name: flutter build apk
         env:
           UAUTONOMY_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+        run: |
+          for i in 1 2 3; do
+            flutter build apk --release --split-per-abi --split-debug-info=build/symbols --build-number=${{ github.run_number }} --dart-define=UAUTONOMY_BUILD=${{ github.run_number }} --dart-define=UAUTONOMY_DIST=site --dart-define=UAUTONOMY_STATS_KEY=${{ vars.UAUTONOMY_STATS_KEY || 'A-EU-3389314094' }} --dart-define=UAUTONOMY_STATS_HOST=${{ vars.UAUTONOMY_STATS_HOST }} && exit 0
+            echo "::warning::спроба $i не вдалася, повтор"; sleep 60
+          done
+          exit 1
       - name: Сертифікат підпису і розмір APK
         working-directory: app/build/app/outputs/flutter-apk
         run: |
@@ -229,7 +240,7 @@ jobs:
           channel: stable
           cache: true
       - run: flutter pub get
-      - run: flutter build windows --release --build-number=${{ github.run_number }} --dart-define=UAUTONOMY_BUILD=${{ github.run_number }} --dart-define=UAUTONOMY_DIST=site --dart-define=UAUTONOMY_STATS_KEY=${{ vars.UAUTONOMY_STATS_KEY }} --dart-define=UAUTONOMY_STATS_HOST=${{ vars.UAUTONOMY_STATS_HOST }}
+      - run: flutter build windows --release --build-number=${{ github.run_number }} --dart-define=UAUTONOMY_BUILD=${{ github.run_number }} --dart-define=UAUTONOMY_DIST=site --dart-define=UAUTONOMY_STATS_KEY=${{ vars.UAUTONOMY_STATS_KEY || 'A-EU-3389314094' }} --dart-define=UAUTONOMY_STATS_HOST=${{ vars.UAUTONOMY_STATS_HOST }}
       - name: Модулі llama.cpp у збірці (чи є Vulkan)
         shell: pwsh
         run: Get-ChildItem build/windows/x64/runner/Release -Recurse -Include *.dll | Select-Object Name, Length | Format-Table -AutoSize

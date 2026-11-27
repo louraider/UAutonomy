@@ -120,6 +120,18 @@ class _HomeScreenState extends State<HomeScreen> {
       PacksScreen(onChanged: () => libraryVersion.value++),
       const ShareScreen(),
     ];
+    // «Назад» з іншої вкладки веде на «Довідку», а не закриває застосунок:
+    // на Android закриття стирало розмову з помічником.
+    return PopScope(
+      canPop: _tab == 0,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) _goTo(0);
+      },
+      child: _scaffold(pages),
+    );
+  }
+
+  Widget _scaffold(List<Widget> pages) {
     return Scaffold(
       body: SafeArea(
         child: Column(
@@ -147,7 +159,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   FilledButton(
                     onPressed: () async {
                       final ok = await openDownload(u.url);
-                      if (!ok && context.mounted) {
+                      if (!ok && mounted) {
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(content: Text('Завантажте з ${u.url}')),
                         );
